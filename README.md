@@ -1,6 +1,6 @@
 # interpreter
 
-interpreter does something good.
+Interpreter validates events and can be used in projects that aim to generate aggregate or individual device metrics.
 
 [![Build Status](https://travis-ci.com/xmidt-org/interpreter.svg?branch=main)](https://travis-ci.com/xmidt-org/interpreter)
 [![codecov.io](http://codecov.io/github/xmidt-org/interpreter/coverage.svg?branch=main)](http://codecov.io/github/xmidt-org/interpreter?branch=main)
@@ -13,15 +13,13 @@ interpreter does something good.
 
 ## Summary
 
-Summary should be a small paragraph explanation of what this project does.
+Interpreter provides different validations for validating:
+
+* Events are valid (e.g. having a proper boot-time, etc.)
+* Boot-cycles are as expected.
 
 ## Table of Contents
-
-- [interpreter](#interpreter)
-  - [Summary](#summary)
-  - [Table of Contents](#table-of-contents)
   - [Code of Conduct](#code-of-conduct)
-  - [Details](#details)
   - [Install](#install)
   - [Contributing](#contributing)
 
@@ -30,13 +28,8 @@ Summary should be a small paragraph explanation of what this project does.
 This project and everyone participating in it are governed by the [XMiDT Code Of Conduct](https://xmidt.io/code_of_conduct/). 
 By participating, you agree to this Code.
 
-## Details
-
-Add details here.
-
 ## Install
-
-Add details here.
+go get -u github.com/xmidt-org/interpreter
 
 ## Contributing
 
