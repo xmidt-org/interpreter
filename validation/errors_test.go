@@ -41,6 +41,7 @@ func TestInvalidEventErr(t *testing.T) {
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
+			assert.Contains(err.Error(), "event invalid")
 			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Equal(tc.expectedLabel, err.ErrorLabel())
 		})
