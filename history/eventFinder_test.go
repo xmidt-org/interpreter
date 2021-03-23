@@ -34,7 +34,7 @@ func TestCurrentSessionFinder(t *testing.T) {
 	t.Run("success", func(t *testing.T) { testSuccess(t, false) })
 }
 
-func TestSameEventFinder(t *testing.T) {
+func TestEventHistoryIterator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	fatalError := errors.New("invalid event")
@@ -148,13 +148,9 @@ func TestSameEventFinder(t *testing.T) {
 					err:   fatalError,
 				},
 			},
-			latestEvent: latestEvent,
-			expectedEvent: message.Event{
-				Destination: "mac:112233445566/online",
-				Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-3 * time.Minute).Unix())},
-				Birthdate:   now.Add(-3 * time.Minute).UnixNano(),
-			},
-			expectedErr: fatalError,
+			latestEvent:   latestEvent,
+			expectedEvent: message.Event{},
+			expectedErr:   fatalError,
 		},
 	}
 

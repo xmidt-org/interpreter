@@ -38,8 +38,7 @@ func (f FinderFunc) Find(events []message.Event, currentEvent message.Event) (me
 
 // LastSessionFinder returns a function to find an event that is deemed valid by the Validator passed in
 // with the boot-time of the previous session. If any of the fatalValidators returns false,
-// it will stop searching and immediately exit, returning the event
-// that prompted the error along with the error returned by the fatalValidator.
+// it will stop searching and immediately exit, returning the error and an empty event.
 func LastSessionFinder(validator validation.Validator, fatalValidator validation.Validator) FinderFunc {
 	return func(events []message.Event, currentEvent message.Event) (message.Event, error) {
 		// verify that the current event has a boot-time
@@ -102,8 +101,7 @@ func lastSessionFinder(events []message.Event, currentEvent message.Event, valid
 
 // CurrentSessionFinder returns a function to find an event that is deemed valid by the Validator passed in
 // with the boot-time of the current event. If any of the fatalValidators returns false,
-// it will stop searching and immediately exit, returning the event
-// that prompted the error along with the error returned by the fatalValidator.
+// it will stop searching and immediately exit, returning the error and an empty event.
 func CurrentSessionFinder(validator validation.Validator, fatalValidator validation.Validator) FinderFunc {
 	return func(events []message.Event, currentEvent message.Event) (message.Event, error) {
 		// verify that the current event has a boot-time
@@ -162,9 +160,8 @@ func currentSessionFinder(events []message.Event, currentEvent message.Event, va
 
 // EventHistoryIterator returns a function that goes through a list of events and compares the currentEvent
 // to these events to make sure that currentEvent is valid. If any of the fatalValidators returns false,
-// it will stop iterating and immediately exit, returning the event
-// that prompted the error along with the error returned by the fatalValidator. If all of the fatalValidators
-// pass, the currentEvent is returned along with nil error.
+// it will stop iterating and immediately exit, returning the error and an empty event.
+// If all of the fatalValidators pass, the currentEvent is returned along with nil error.
 func EventHistoryIterator(fatalValidator validation.Validator) FinderFunc {
 	return func(events []message.Event, currentEvent message.Event) (message.Event, error) {
 		// verify that the current event has a boot-time
@@ -182,7 +179,7 @@ func EventHistoryIterator(fatalValidator validation.Validator) FinderFunc {
 			// because there is something wrong with currentEvent, and we should not
 			// perform calculations using it.
 			if valid, err := fatalValidator.Valid(event); !valid {
-				return event, validation.InvalidEventErr{OriginalErr: err}
+				return message.Event{}, validation.InvalidEventErr{OriginalErr: err}
 			}
 		}
 
