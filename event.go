@@ -15,7 +15,7 @@
  *
  */
 
-package message
+package interpreter
 
 import (
 	"encoding/json"
