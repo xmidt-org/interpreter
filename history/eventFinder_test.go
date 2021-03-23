@@ -9,12 +9,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/xmidt-org/interpreter/message"
+	"github.com/xmidt-org/interpreter"
 	"github.com/xmidt-org/interpreter/validation"
 )
 
 type testEvent struct {
-	event message.Event
+	event interpreter.Event
 	valid bool
 	err   error
 }
@@ -38,9 +38,9 @@ func TestEventHistoryIterator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	fatalError := errors.New("invalid event")
-	latestEvent := message.Event{
+	latestEvent := interpreter.Event{
 		Destination:     "mac:112233445566/online",
-		Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 		Birthdate:       now.UnixNano(),
 		TransactionUUID: "latest",
 	}
@@ -48,8 +48,8 @@ func TestEventHistoryIterator(t *testing.T) {
 	tests := []struct {
 		description   string
 		events        []testEvent
-		expectedEvent message.Event
-		latestEvent   message.Event
+		expectedEvent interpreter.Event
+		latestEvent   interpreter.Event
 		expectedErr   error
 	}{
 		{
@@ -60,9 +60,9 @@ func TestEventHistoryIterator(t *testing.T) {
 					valid: true,
 				},
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/online",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
 					valid: true,
@@ -92,56 +92,56 @@ func TestEventHistoryIterator(t *testing.T) {
 			description: "missing boot-time",
 			events: []testEvent{
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/online",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
 					valid: true,
 				},
 			},
-			latestEvent: message.Event{
+			latestEvent: interpreter.Event{
 				Destination: "mac:112233445566/online",
 				Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 			},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   validation.InvalidBootTimeErr{},
 		},
 		{
 			description: "invalid boot-time",
 			events: []testEvent{
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/online",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
 					valid: true,
 				},
 			},
-			latestEvent: message.Event{
+			latestEvent: interpreter.Event{
 				Destination: "mac:112233445566/online",
 				Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-				Metadata:    map[string]string{message.BootTimeKey: "-1"},
+				Metadata:    map[string]string{interpreter.BootTimeKey: "-1"},
 			},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   validation.InvalidBootTimeErr{},
 		},
 		{
 			description: "invalid event",
 			events: []testEvent{
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/online",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
 					valid: true,
 				},
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/online",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-3 * time.Minute).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-3 * time.Minute).Unix())},
 						Birthdate:   now.Add(-3 * time.Minute).UnixNano(),
 					},
 					valid: false,
@@ -149,7 +149,7 @@ func TestEventHistoryIterator(t *testing.T) {
 				},
 			},
 			latestEvent:   latestEvent,
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   fatalError,
 		},
 	}
@@ -158,7 +158,7 @@ func TestEventHistoryIterator(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
 			fatalValidators := new(mockValidator)
-			events := make([]message.Event, 0, len(tc.events))
+			events := make([]interpreter.Event, 0, len(tc.events))
 			for _, te := range tc.events {
 				fatalValidators.On("Valid", te.event).Return(te.valid, te.err)
 				events = append(events, te.event)
@@ -192,62 +192,62 @@ func testError(t *testing.T, past bool) {
 
 	tests := []struct {
 		description   string
-		events        []message.Event
-		expectedEvent message.Event
-		latestEvent   message.Event
+		events        []interpreter.Event
+		expectedEvent interpreter.Event
+		latestEvent   interpreter.Event
 		expectedErr   error
 	}{
 		{
 			description: "Non-existent boot-time",
-			events: []message.Event{
-				message.Event{
+			events: []interpreter.Event{
+				interpreter.Event{
 					Destination: "mac:112233445566/online",
-					Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 					Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 				},
 			},
-			latestEvent: message.Event{
+			latestEvent: interpreter.Event{
 				Destination:     "mac:112233445566/online",
 				Birthdate:       now.UnixNano(),
 				TransactionUUID: "latest",
 			},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   validation.InvalidBootTimeErr{},
 		},
 		{
 			description: "Invalid boot-time",
-			events: []message.Event{
-				message.Event{
+			events: []interpreter.Event{
+				interpreter.Event{
 					Destination: "mac:112233445566/online",
-					Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 					Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 				},
 			},
-			latestEvent: message.Event{
+			latestEvent: interpreter.Event{
 				Destination:     "mac:112233445566/online",
-				Metadata:        map[string]string{message.BootTimeKey: "-1"},
+				Metadata:        map[string]string{interpreter.BootTimeKey: "-1"},
 				Birthdate:       now.UnixNano(),
 				TransactionUUID: "latest",
 			},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   validation.InvalidBootTimeErr{},
 		},
 		{
 			description: "Fatal error",
-			events: []message.Event{
-				message.Event{
+			events: []interpreter.Event{
+				interpreter.Event{
 					Destination: "mac:112233445566/online",
-					Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(1 * time.Hour).Unix())},
+					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(1 * time.Hour).Unix())},
 					Birthdate:   now.Add(1 * time.Hour).UnixNano(),
 				},
 			},
-			latestEvent: message.Event{
+			latestEvent: interpreter.Event{
 				Destination:     "mac:112233445566/online",
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				Birthdate:       now.UnixNano(),
 				TransactionUUID: "latest",
 			},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   fatalError,
 		},
 	}
@@ -267,9 +267,9 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	regex := regexp.MustCompile(".*/online")
-	latestEvent := message.Event{
+	latestEvent := interpreter.Event{
 		Destination:     "mac:112233445566/online",
-		Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 		Birthdate:       now.UnixNano(),
 		TransactionUUID: "latest",
 	}
@@ -286,45 +286,45 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 
 	tests := []struct {
 		description   string
-		events        []message.Event
-		expectedEvent message.Event
-		latestEvent   message.Event
+		events        []interpreter.Event
+		expectedEvent interpreter.Event
+		latestEvent   interpreter.Event
 		expectedErr   error
 	}{
 		{
 			description: "Newer boot-time found",
-			events: []message.Event{
-				message.Event{
+			events: []interpreter.Event{
+				interpreter.Event{
 					Destination: "mac:112233445566/online",
-					Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(1 * time.Hour).Unix())},
+					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(1 * time.Hour).Unix())},
 					Birthdate:   now.Add(-1 * time.Hour).UnixNano(),
 				},
-				message.Event{
+				interpreter.Event{
 					Destination: "mac:112233445566/online",
-					Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 					Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 				},
 			},
 			latestEvent:   latestEvent,
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   validation.InvalidEventErr{},
 		},
 		{
 			description: "Duplicate event found",
-			events: []message.Event{
-				message.Event{
+			events: []interpreter.Event{
+				interpreter.Event{
 					Destination: "mac:112233445566/online",
-					Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 					Birthdate:   now.UnixNano(),
 				},
-				message.Event{
+				interpreter.Event{
 					Destination: "mac:112233445566/online",
-					Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 					Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 				},
 			},
 			latestEvent:   latestEvent,
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   validation.InvalidEventErr{},
 		},
 	}
@@ -344,9 +344,9 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 func testNotFound(t *testing.T, past bool) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
-	latestEvent := message.Event{
+	latestEvent := interpreter.Event{
 		Destination:     "mac:112233445566/online",
-		Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 		Birthdate:       now.UnixNano(),
 		TransactionUUID: "latest",
 	}
@@ -356,13 +356,13 @@ func testNotFound(t *testing.T, past bool) {
 	tests := []struct {
 		description   string
 		events        []testEvent
-		expectedEvent message.Event
+		expectedEvent interpreter.Event
 		expectedErr   error
 	}{
 		{
 			description:   "no events",
 			events:        []testEvent{},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   EventNotFoundErr,
 		},
 		{
@@ -373,56 +373,56 @@ func testNotFound(t *testing.T, past bool) {
 					valid: false,
 				},
 			},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   EventNotFoundErr,
 		},
 		{
 			description: "no events match",
 			events: []testEvent{
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/online",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-1 * time.Hour).UnixNano(),
 					},
 					valid: false,
 					err:   validation.ErrInvalidEventType,
 				},
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/online",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
 					valid: false,
 					err:   validation.ErrInvalidEventType,
 				},
 			},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   EventNotFoundErr,
 		},
 		{
 			description: "event matched not from correct session",
 			events: []testEvent{
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/offline",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-1 * time.Hour).UnixNano(),
 					},
 					valid: true,
 				},
 				testEvent{
-					event: message.Event{
+					event: interpreter.Event{
 						Destination: "mac:112233445566/online",
-						Metadata:    map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix())},
+						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix())},
 						Birthdate:   now.Add(-1 * time.Hour).UnixNano(),
 					},
 					valid: false,
 					err:   validation.ErrInvalidEventType,
 				},
 			},
-			expectedEvent: message.Event{},
+			expectedEvent: interpreter.Event{},
 			expectedErr:   EventNotFoundErr,
 		},
 	}
@@ -431,7 +431,7 @@ func testNotFound(t *testing.T, past bool) {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
 			mockVal := new(mockValidator)
-			testEvents := make([]message.Event, 0, len(tc.events))
+			testEvents := make([]interpreter.Event, 0, len(tc.events))
 			for _, te := range tc.events {
 				mockVal.On("Valid", te.event).Return(te.valid, te.err)
 				testEvents = append(testEvents, te.event)
@@ -460,24 +460,24 @@ func testSuccess(t *testing.T, past bool) {
 	fatalValidators := new(mockValidator)
 	fatalValidators.On("Valid", mock.Anything).Return(true, nil)
 
-	latestEvent := message.Event{
+	latestEvent := interpreter.Event{
 		Destination:     "mac:112233445566/online",
-		Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 		Birthdate:       now.UnixNano(),
 		TransactionUUID: "latest",
 	}
-	var validEvent message.Event
+	var validEvent interpreter.Event
 	if past {
-		validEvent = message.Event{
+		validEvent = interpreter.Event{
 			Destination:     "mac:112233445566/online",
-			Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+			Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 			Birthdate:       now.Add(-1 * time.Hour).UnixNano(),
 			TransactionUUID: "test",
 		}
 	} else {
-		validEvent = message.Event{
+		validEvent = interpreter.Event{
 			Destination:     "mac:112233445566/online",
-			Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+			Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 			Birthdate:       now.UnixNano(),
 			TransactionUUID: "test",
 		}
@@ -485,9 +485,9 @@ func testSuccess(t *testing.T, past bool) {
 
 	testEvents := []testEvent{
 		testEvent{
-			event: message.Event{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/online",
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-2 * time.Hour).Unix())},
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-2 * time.Hour).Unix())},
 				Birthdate:       now.Add(-2 * time.Hour).UnixNano(),
 				TransactionUUID: "test",
 			},
@@ -498,9 +498,9 @@ func testSuccess(t *testing.T, past bool) {
 			valid: true,
 		},
 		testEvent{
-			event: message.Event{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/offline",
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 				Birthdate:       now.Add(-1 * time.Hour).UnixNano(),
 				TransactionUUID: "test",
 			},
@@ -508,7 +508,7 @@ func testSuccess(t *testing.T, past bool) {
 			err:   validation.ErrInvalidEventType,
 		},
 		testEvent{
-			event: message.Event{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/online",
 				Birthdate:       now.Add(-1 * time.Hour).UnixNano(),
 				TransactionUUID: "test",
@@ -517,7 +517,7 @@ func testSuccess(t *testing.T, past bool) {
 		},
 	}
 
-	events := make([]message.Event, 0, len(testEvents)+1)
+	events := make([]interpreter.Event, 0, len(testEvents)+1)
 	events = append(events, latestEvent)
 	for _, te := range testEvents {
 		mockVal.On("Valid", te.event).Return(te.valid, te.err)
@@ -580,8 +580,8 @@ func TestGetPreviousBootTime(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			event := message.Event{
-				Metadata: map[string]string{message.BootTimeKey: fmt.Sprint(tc.currentTime)},
+			event := interpreter.Event{
+				Metadata: map[string]string{interpreter.BootTimeKey: fmt.Sprint(tc.currentTime)},
 			}
 			bootTime, newFound := getPreviousBootTime(event, tc.defaultTime, tc.latestBootTime)
 			assert.Equal(tc.expectedTime, bootTime)
@@ -595,20 +595,20 @@ func TestNewValidEvent(t *testing.T) {
 	assert.Nil(t, err)
 	tests := []struct {
 		description    string
-		newEvent       message.Event
-		defaultEvent   message.Event
+		newEvent       interpreter.Event
+		defaultEvent   interpreter.Event
 		newEventValid  bool
 		targetBootTime int64
 		expectedRes    bool
 	}{
 		{
 			description: "new event returned",
-			newEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+			newEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				Birthdate: now.UnixNano(),
 			},
-			defaultEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(time.Hour).Unix())},
+			defaultEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(time.Hour).Unix())},
 				Birthdate: now.Add(time.Hour).UnixNano(),
 			},
 			newEventValid:  true,
@@ -617,12 +617,12 @@ func TestNewValidEvent(t *testing.T) {
 		},
 		{
 			description: "target boot-time mismatch",
-			newEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(2 * time.Hour).Unix())},
+			newEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(2 * time.Hour).Unix())},
 				Birthdate: now.Add(2 * time.Hour).UnixNano(),
 			},
-			defaultEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(time.Hour).Unix())},
+			defaultEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(time.Hour).Unix())},
 				Birthdate: now.Add(time.Hour).UnixNano(),
 			},
 			newEventValid:  true,
@@ -631,12 +631,12 @@ func TestNewValidEvent(t *testing.T) {
 		},
 		{
 			description: "event invalid",
-			newEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+			newEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				Birthdate: now.UnixNano(),
 			},
-			defaultEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(time.Hour).Unix())},
+			defaultEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(time.Hour).Unix())},
 				Birthdate: now.Add(time.Hour).UnixNano(),
 			},
 			newEventValid:  false,
@@ -645,12 +645,12 @@ func TestNewValidEvent(t *testing.T) {
 		},
 		{
 			description: "both event boot-times match",
-			newEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+			newEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				Birthdate: now.Add(time.Minute).UnixNano(),
 			},
-			defaultEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+			defaultEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				Birthdate: now.UnixNano(),
 			},
 			newEventValid:  true,
@@ -659,12 +659,12 @@ func TestNewValidEvent(t *testing.T) {
 		},
 		{
 			description: "both event boot-times match",
-			newEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+			newEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				Birthdate: now.UnixNano(),
 			},
-			defaultEvent: message.Event{
-				Metadata:  map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+			defaultEvent: interpreter.Event{
+				Metadata:  map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				Birthdate: now.Add(time.Minute).UnixNano(),
 			},
 			newEventValid:  true,

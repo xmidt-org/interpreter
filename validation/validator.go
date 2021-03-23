@@ -22,7 +22,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/xmidt-org/interpreter/message"
+	"github.com/xmidt-org/interpreter"
 )
 
 var (
@@ -35,14 +35,14 @@ var (
 // Validator validates an event, returning false and an error if the event is not valid
 // and true if the event is valid
 type Validator interface {
-	Valid(message.Event) (bool, error)
+	Valid(interpreter.Event) (bool, error)
 }
 
 // ValidatorFunc is a function that checks if an Event is valid
-type ValidatorFunc func(message.Event) (bool, error)
+type ValidatorFunc func(interpreter.Event) (bool, error)
 
 // Valid runs the ValidatorFunc, making a ValidatorFunc a Validator
-func (vf ValidatorFunc) Valid(e message.Event) (bool, error) {
+func (vf ValidatorFunc) Valid(e interpreter.Event) (bool, error) {
 	return vf(e)
 }
 
@@ -52,7 +52,7 @@ type Validators []Validator
 // Valid runs through a list of Validators and checks that the Event
 // is valid against each validator. Returns false and an error at the first
 // validator that deems the Event invalid
-func (v Validators) Valid(e message.Event) (bool, error) {
+func (v Validators) Valid(e interpreter.Event) (bool, error) {
 	for _, r := range v {
 		if valid, err := r.Valid(e); !valid {
 			return false, err
@@ -65,7 +65,7 @@ func (v Validators) Valid(e message.Event) (bool, error) {
 // Event's boot-time is valid, meaning parsable, greater than 0, and within the
 // bounds deemed valid by the TimeValidation parameter.
 func BootTimeValidator(tv TimeValidation) ValidatorFunc {
-	return func(e message.Event) (bool, error) {
+	return func(e interpreter.Event) (bool, error) {
 		bootTime, err := e.BootTime()
 		if err != nil || bootTime <= 0 {
 			return false, InvalidEventErr{
@@ -91,7 +91,7 @@ func BootTimeValidator(tv TimeValidation) ValidatorFunc {
 // Event's birthdate is valid, meaning greater than 0 and within the
 // bounds deemed valid by the TimeValidation parameter.
 func BirthdateValidator(tv TimeValidation) ValidatorFunc {
-	return func(e message.Event) (bool, error) {
+	return func(e interpreter.Event) (bool, error) {
 		birthdate := e.Birthdate
 		if birthdate <= 0 {
 			return false, InvalidEventErr{
@@ -114,7 +114,7 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 // DestinationValidator takes in a regex and returns a ValidatorFunc that checks if an
 // Event's destination is valid against this regex.
 func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
-	return func(e message.Event) (bool, error) {
+	return func(e interpreter.Event) (bool, error) {
 		if !regex.MatchString(e.Destination) {
 			return false, InvalidEventErr{OriginalErr: ErrInvalidEventType}
 		}
@@ -125,9 +125,9 @@ func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 // NewestBootTimeValidator returns a ValidatorFunc to check and see if an event's boot-time is
 // less than or equal to the latestEvent's boot-time. NewestBootTimeValidator assumes that latestEvent
 // has a valid boot-time and does not do any error-checking of latestEvent's boot-time.
-func NewestBootTimeValidator(latestEvent message.Event) ValidatorFunc {
+func NewestBootTimeValidator(latestEvent interpreter.Event) ValidatorFunc {
 	latestBootTime, _ := latestEvent.BootTime()
-	return func(e message.Event) (bool, error) {
+	return func(e interpreter.Event) (bool, error) {
 		// event is latestEvent, no need to compare boot-times
 		if e.TransactionUUID == latestEvent.TransactionUUID {
 			return true, nil
@@ -151,10 +151,10 @@ func NewestBootTimeValidator(latestEvent message.Event) ValidatorFunc {
 // it does not share the same destination type and boot-time as another event.
 // UniqueEventValidator assumes that compareEvent has a valid boot-time
 // and does not do any error-checking of compareEvent's boot-time.
-func UniqueEventValidator(compareEvent message.Event, eventType *regexp.Regexp) ValidatorFunc {
+func UniqueEventValidator(compareEvent interpreter.Event, eventType *regexp.Regexp) ValidatorFunc {
 	destValidator := DestinationValidator(eventType)
 	latestBootTime, _ := compareEvent.BootTime()
-	return func(e message.Event) (bool, error) {
+	return func(e interpreter.Event) (bool, error) {
 		// event is latestEvent, no need to compare boot-times
 		if e.TransactionUUID == compareEvent.TransactionUUID {
 			return true, nil

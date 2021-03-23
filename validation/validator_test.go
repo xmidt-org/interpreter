@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/xmidt-org/interpreter/message"
+	"github.com/xmidt-org/interpreter"
 )
 
 func TestValidators(t *testing.T) {
 	assert := assert.New(t)
-	testEvent := message.Event{}
+	testEvent := interpreter.Event{}
 	validators := Validators([]Validator{testValidator(true, nil), testValidator(true, nil)})
 	valid, err := validators.Valid(testEvent)
 	assert.True(valid)
@@ -30,7 +30,7 @@ func TestValidators(t *testing.T) {
 }
 
 func testValidator(returnBool bool, returnErr error) ValidatorFunc {
-	return func(e message.Event) (bool, error) {
+	return func(e interpreter.Event) (bool, error) {
 		return returnBool, returnErr
 	}
 }
@@ -43,26 +43,26 @@ func TestBootTimeValidator(t *testing.T) {
 	validator := BootTimeValidator(validation)
 	tests := []struct {
 		description string
-		event       message.Event
+		event       interpreter.Event
 		valid       bool
 		expectedErr error
 	}{
 		{
 			description: "Valid event",
-			event: message.Event{
+			event: interpreter.Event{
 				Birthdate: now.Add(-1 * time.Hour).UnixNano(),
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix()),
 				},
 			},
 			valid: true,
 		},
 		{
 			description: "Past boot-time",
-			event: message.Event{
+			event: interpreter.Event{
 				Birthdate: now.Add(-1 * time.Hour).UnixNano(),
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(-3 * time.Hour).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(-3 * time.Hour).Unix()),
 				},
 			},
 			valid:       false,
@@ -70,10 +70,10 @@ func TestBootTimeValidator(t *testing.T) {
 		},
 		{
 			description: "Future boot-time",
-			event: message.Event{
+			event: interpreter.Event{
 				Birthdate: now.Add(-1 * time.Hour).UnixNano(),
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(2 * time.Hour).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(2 * time.Hour).Unix()),
 				},
 			},
 			valid:       false,
@@ -81,7 +81,7 @@ func TestBootTimeValidator(t *testing.T) {
 		},
 		{
 			description: "No boot-time",
-			event: message.Event{
+			event: interpreter.Event{
 				Birthdate: now.Add(-1 * time.Hour).UnixNano(),
 				Metadata:  map[string]string{},
 			},
@@ -112,26 +112,26 @@ func TestBirthdateValidator(t *testing.T) {
 	validator := BirthdateValidator(validation)
 	tests := []struct {
 		description string
-		event       message.Event
+		event       interpreter.Event
 		valid       bool
 		expectedErr error
 	}{
 		{
 			description: "Valid event",
-			event: message.Event{
+			event: interpreter.Event{
 				Birthdate: now.Add(-1 * time.Hour).UnixNano(),
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix()),
 				},
 			},
 			valid: true,
 		},
 		{
 			description: "Past birthdate",
-			event: message.Event{
+			event: interpreter.Event{
 				Birthdate: now.Add(-3 * time.Hour).UnixNano(),
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix()),
 				},
 			},
 			valid:       false,
@@ -139,10 +139,10 @@ func TestBirthdateValidator(t *testing.T) {
 		},
 		{
 			description: "Future birthdate",
-			event: message.Event{
+			event: interpreter.Event{
 				Birthdate: now.Add(2 * time.Hour).UnixNano(),
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(2 * time.Hour).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(2 * time.Hour).Unix()),
 				},
 			},
 			valid:       false,
@@ -150,9 +150,9 @@ func TestBirthdateValidator(t *testing.T) {
 		},
 		{
 			description: "No birthdate",
-			event: message.Event{
+			event: interpreter.Event{
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(2 * time.Hour).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(2 * time.Hour).Unix()),
 				},
 			},
 			valid:       false,
@@ -178,20 +178,20 @@ func TestDestinationValidator(t *testing.T) {
 	validator := DestinationValidator(regexp.MustCompile(".*/some-event/.*"))
 	tests := []struct {
 		description string
-		event       message.Event
+		event       interpreter.Event
 		valid       bool
 		expectedErr error
 	}{
 		{
 			description: "Valid event",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination: "some-prefix/device-id/some-event/112233445566/random",
 			},
 			valid: true,
 		},
 		{
 			description: "Invalid event",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination: "/random-event/",
 			},
 			expectedErr: InvalidEventErr{OriginalErr: ErrInvalidEventType},
@@ -216,24 +216,24 @@ func TestDestinationValidator(t *testing.T) {
 func TestNewestBootTimeValidator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
-	latestEvent := message.Event{
-		Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+	latestEvent := interpreter.Event{
+		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 		TransactionUUID: "123",
 	}
 
 	validator := NewestBootTimeValidator(latestEvent)
 	tests := []struct {
 		description string
-		event       message.Event
+		event       interpreter.Event
 		valid       bool
 		validator   Validator
 		expectedErr error
 	}{
 		{
 			description: "valid event",
-			event: message.Event{
+			event: interpreter.Event{
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix()),
 				},
 				TransactionUUID: "abc",
 			},
@@ -242,9 +242,9 @@ func TestNewestBootTimeValidator(t *testing.T) {
 		},
 		{
 			description: "same event uuid",
-			event: message.Event{
+			event: interpreter.Event{
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(30 * time.Minute).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(30 * time.Minute).Unix()),
 				},
 				TransactionUUID: "123",
 			},
@@ -253,7 +253,7 @@ func TestNewestBootTimeValidator(t *testing.T) {
 		},
 		{
 			description: "boot-time not present",
-			event: message.Event{
+			event: interpreter.Event{
 				Metadata:        map[string]string{},
 				TransactionUUID: "abc",
 			},
@@ -262,8 +262,8 @@ func TestNewestBootTimeValidator(t *testing.T) {
 		},
 		{
 			description: "newer boot-time",
-			event: message.Event{
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(30 * time.Minute).Unix())},
+			event: interpreter.Event{
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(30 * time.Minute).Unix())},
 				TransactionUUID: "abc",
 			},
 			validator:   validator,
@@ -272,11 +272,11 @@ func TestNewestBootTimeValidator(t *testing.T) {
 		},
 		{
 			description: "latest boot-time invalid",
-			event: message.Event{
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix())},
+			event: interpreter.Event{
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix())},
 				TransactionUUID: "abc",
 			},
-			validator: NewestBootTimeValidator(message.Event{
+			validator: NewestBootTimeValidator(interpreter.Event{
 				TransactionUUID: "123",
 			}),
 			valid:       false,
@@ -305,8 +305,8 @@ func TestUniqueEventValidator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	destRegex := regexp.MustCompile(".*/online")
-	latestEvent := message.Event{
-		Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+	latestEvent := interpreter.Event{
+		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 		TransactionUUID: "test",
 		Birthdate:       now.UnixNano(),
 	}
@@ -314,17 +314,17 @@ func TestUniqueEventValidator(t *testing.T) {
 	validator := UniqueEventValidator(latestEvent, destRegex)
 	tests := []struct {
 		description string
-		event       message.Event
+		event       interpreter.Event
 		valid       bool
 		validator   Validator
 		expectedErr error
 	}{
 		{
 			description: "valid event",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination: "mac:112233445566/online",
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix()),
 				},
 				TransactionUUID: "abc",
 				Birthdate:       now.Add(-30 * time.Minute).UnixNano(),
@@ -334,10 +334,10 @@ func TestUniqueEventValidator(t *testing.T) {
 		},
 		{
 			description: "same event uuid",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination: "mac:112233445566/online",
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
 				},
 				TransactionUUID: "test",
 				Birthdate:       now.UnixNano(),
@@ -347,10 +347,10 @@ func TestUniqueEventValidator(t *testing.T) {
 		},
 		{
 			description: "event type mismatch",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination: "mac:112233445566/offline",
 				Metadata: map[string]string{
-					message.BootTimeKey: fmt.Sprint(now.Unix()),
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
 				},
 				TransactionUUID: "abc",
 				Birthdate:       now.UnixNano(),
@@ -360,7 +360,7 @@ func TestUniqueEventValidator(t *testing.T) {
 		},
 		{
 			description: "boot-time missing",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/online",
 				Metadata:        map[string]string{},
 				TransactionUUID: "abc",
@@ -371,9 +371,9 @@ func TestUniqueEventValidator(t *testing.T) {
 		},
 		{
 			description: "duplicate found, older birthdate",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/online",
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				TransactionUUID: "abc",
 				Birthdate:       now.Add(-1 * time.Minute).UnixNano(),
 			},
@@ -383,9 +383,9 @@ func TestUniqueEventValidator(t *testing.T) {
 		},
 		{
 			description: "duplicate found, same birthdate",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/online",
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				TransactionUUID: "abc",
 				Birthdate:       now.UnixNano(),
 			},
@@ -395,9 +395,9 @@ func TestUniqueEventValidator(t *testing.T) {
 		},
 		{
 			description: "duplicate found, later birthdate",
-			event: message.Event{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/online",
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				TransactionUUID: "abc",
 				Birthdate:       now.Add(time.Minute).UnixNano(),
 			},
@@ -406,12 +406,12 @@ func TestUniqueEventValidator(t *testing.T) {
 		},
 		{
 			description: "latest boot-time invalid",
-			event: message.Event{
-				Metadata:        map[string]string{message.BootTimeKey: fmt.Sprint(now.Unix())},
+			event: interpreter.Event{
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				TransactionUUID: "123",
 				Birthdate:       now.UnixNano(),
 			},
-			validator: UniqueEventValidator(message.Event{
+			validator: UniqueEventValidator(interpreter.Event{
 				TransactionUUID: "test",
 				Birthdate:       now.UnixNano(),
 			}, destRegex),
