@@ -50,12 +50,12 @@ func LastSessionFinder(validator validation.Validator, fatalValidator validation
 		event, found, err := lastSessionFinder(events, currentEvent, validator, fatalValidator)
 
 		if err != nil {
-			return interpreter.Event{}, err
+			return interpreter.Event{}, EventFinderErr{OriginalErr: err, ComparisonEvent: event}
 		}
 
 		// final check to make sure that we actually found an event
 		if !found {
-			return interpreter.Event{}, EventNotFoundErr
+			return interpreter.Event{}, EventFinderErr{OriginalErr: EventNotFoundErr}
 		}
 		return event, nil
 	}
@@ -112,12 +112,12 @@ func CurrentSessionFinder(validator validation.Validator, fatalValidator validat
 
 		event, found, err := currentSessionFinder(events, currentEvent, validator, fatalValidator)
 		if err != nil {
-			return interpreter.Event{}, err
+			return interpreter.Event{}, EventFinderErr{OriginalErr: err, ComparisonEvent: event}
 		}
 
 		// final check to make sure that we actually found an event
 		if !found {
-			return interpreter.Event{}, EventNotFoundErr
+			return interpreter.Event{}, EventFinderErr{OriginalErr: EventNotFoundErr}
 		}
 		return event, nil
 	}
@@ -179,7 +179,7 @@ func EventHistoryIterator(fatalValidator validation.Validator) FinderFunc {
 			// because there is something wrong with currentEvent, and we should not
 			// perform calculations using it.
 			if valid, err := fatalValidator.Valid(event); !valid {
-				return interpreter.Event{}, validation.InvalidEventErr{OriginalErr: err}
+				return interpreter.Event{}, EventFinderErr{OriginalErr: validation.InvalidEventErr{OriginalErr: err}, ComparisonEvent: event}
 			}
 		}
 
