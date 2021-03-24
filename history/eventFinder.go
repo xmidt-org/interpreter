@@ -37,7 +37,7 @@ func (f FinderFunc) Find(events []interpreter.Event, currentEvent interpreter.Ev
 }
 
 // LastSessionFinder returns a function to find an event that is deemed valid by the Validator passed in
-// with the boot-time of the previous session. If any of the fatalValidators returns false,
+// with the boot-time of the previous session. If comparator returns false,
 // it will stop searching and immediately exit, returning the error and an empty event.
 func LastSessionFinder(validator validation.Validator, comparator Comparator) FinderFunc {
 	return func(events []interpreter.Event, currentEvent interpreter.Event) (interpreter.Event, error) {
@@ -75,7 +75,7 @@ func lastSessionFinder(events []interpreter.Event, currentEvent interpreter.Even
 			continue
 		}
 
-		// if any fatalValidators return false, it means we should stop looking for an event
+		// If comparator returns false, it means we should stop looking for an event
 		// because there is something wrong with currentEvent, and we should not
 		// perform calculations using it.
 		if valid, err := comparator.Compare(event, currentEvent); !valid {
@@ -99,7 +99,7 @@ func lastSessionFinder(events []interpreter.Event, currentEvent interpreter.Even
 }
 
 // CurrentSessionFinder returns a function to find an event that is deemed valid by the Validator passed in
-// with the boot-time of the current event. If any of the fatalValidators returns false,
+// with the boot-time of the current event. If comparator returns false,
 // it will stop searching and immediately exit, returning the error and an empty event.
 func CurrentSessionFinder(validator validation.Validator, comparator Comparator) FinderFunc {
 	return func(events []interpreter.Event, currentEvent interpreter.Event) (interpreter.Event, error) {
@@ -133,7 +133,7 @@ func currentSessionFinder(events []interpreter.Event, currentEvent interpreter.E
 			continue
 		}
 
-		// if any fatalValidator return false, it means we should stop looking for an event
+		// If comparator returns false, it means we should stop looking for an event
 		// because there is something wrong with currentEvent, and we should not
 		// perform calculations using it.
 		if valid, err := comparator.Compare(event, currentEvent); !valid {
@@ -158,9 +158,9 @@ func currentSessionFinder(events []interpreter.Event, currentEvent interpreter.E
 }
 
 // EventHistoryIterator returns a function that goes through a list of events and compares the currentEvent
-// to these events to make sure that currentEvent is valid. If any of the fatalValidators returns false,
+// to these events to make sure that currentEvent is valid. If comparator returns false,
 // it will stop iterating and immediately exit, returning the error and an empty event.
-// If all of the fatalValidators pass, the currentEvent is returned along with nil error.
+// If comparator passes, the currentEvent is returned along with nil error.
 func EventHistoryIterator(comparator Comparator) FinderFunc {
 	return func(events []interpreter.Event, currentEvent interpreter.Event) (interpreter.Event, error) {
 		// verify that the current event has a boot-time
@@ -174,7 +174,7 @@ func EventHistoryIterator(comparator Comparator) FinderFunc {
 			if event.TransactionUUID == currentEvent.TransactionUUID {
 				continue
 			}
-			// if any fatalValidators return false, it means we should stop looking for an event
+			// If comparator returns false, it means we should stop looking for an event
 			// because there is something wrong with currentEvent, and we should not
 			// perform calculations using it.
 			if valid, err := comparator.Compare(event, currentEvent); !valid {
