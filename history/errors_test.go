@@ -44,3 +44,33 @@ func TestEventCompareErr(t *testing.T) {
 		})
 	}
 }
+
+func TestEventFinderErr(t *testing.T) {
+	testErr := errors.New("test error")
+	tests := []struct {
+		description string
+		err         EventFinderErr
+		expectedErr error
+	}{
+		{
+			description: "No underlying error or event",
+			err:         EventFinderErr{},
+		},
+		{
+			description: "Underlying error",
+			err:         EventFinderErr{OriginalErr: testErr},
+			expectedErr: testErr,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			if tc.expectedErr != nil {
+				assert.Contains(tc.err.Error(), tc.expectedErr.Error())
+			}
+			assert.Contains(tc.err.Error(), "event finder error")
+			assert.Equal(tc.expectedErr, tc.err.Unwrap())
+		})
+	}
+}

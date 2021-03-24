@@ -30,6 +30,7 @@ func (e EventCompareErr) Event() interpreter.Event {
 	return e.ComparisonEvent
 }
 
+// EventFinderErr is an error used by EventFinder.
 type EventFinderErr struct {
 	OriginalErr error
 }
