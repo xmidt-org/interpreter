@@ -8,26 +8,26 @@ import (
 	"github.com/xmidt-org/interpreter"
 )
 
-func TestEventFinderErr(t *testing.T) {
+func TestEventCompareErr(t *testing.T) {
 	testErr := errors.New("test error")
 	tests := []struct {
 		description   string
-		err           EventFinderErr
+		err           EventCompareErr
 		expectedErr   error
 		expectedEvent interpreter.Event
 	}{
 		{
 			description: "No underlying error or event",
-			err:         EventFinderErr{},
+			err:         EventCompareErr{},
 		},
 		{
 			description: "Underlying error",
-			err:         EventFinderErr{OriginalErr: testErr},
+			err:         EventCompareErr{OriginalErr: testErr},
 			expectedErr: testErr,
 		},
 		{
 			description:   "Underlying event",
-			err:           EventFinderErr{ComparisonEvent: interpreter.Event{Destination: "test-dest"}},
+			err:           EventCompareErr{ComparisonEvent: interpreter.Event{Destination: "test-dest"}},
 			expectedEvent: interpreter.Event{Destination: "test-dest"},
 		},
 	}
@@ -38,7 +38,7 @@ func TestEventFinderErr(t *testing.T) {
 			if tc.expectedErr != nil {
 				assert.Contains(tc.err.Error(), tc.expectedErr.Error())
 			}
-			assert.Contains(tc.err.Error(), "history comparison: invalid event.")
+			assert.Contains(tc.err.Error(), "history comparison: invalid event")
 			assert.Equal(tc.expectedErr, tc.err.Unwrap())
 			assert.Equal(tc.expectedEvent, tc.err.Event())
 		})

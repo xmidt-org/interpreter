@@ -157,14 +157,14 @@ func TestEventHistoryIterator(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			fatalValidators := new(mockValidator)
+			comparator := new(mockComparator)
 			events := make([]interpreter.Event, 0, len(tc.events))
 			for _, te := range tc.events {
-				fatalValidators.On("Valid", te.event).Return(te.valid, te.err)
+				comparator.On("Compare", te.event, tc.latestEvent).Return(te.valid, te.err)
 				events = append(events, te.event)
 			}
 
-			finder := EventHistoryIterator(fatalValidators)
+			finder := EventHistoryIterator(comparator)
 			event, err := finder.Find(events, tc.latestEvent)
 			assert.Equal(tc.expectedEvent, event)
 			if tc.expectedErr == nil || err == nil {
@@ -180,14 +180,14 @@ func testError(t *testing.T, past bool) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 
-	fatalValidators := new(mockValidator)
+	comparator := new(mockComparator)
 	fatalError := errors.New("invalid event")
-	fatalValidators.On("Valid", mock.Anything).Return(false, fatalError)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(false, fatalError)
 	var finder FinderFunc
 	if past {
-		finder = LastSessionFinder(new(mockValidator), fatalValidators)
+		finder = LastSessionFinder(new(mockValidator), comparator)
 	} else {
-		finder = CurrentSessionFinder(new(mockValidator), fatalValidators)
+		finder = CurrentSessionFinder(new(mockValidator), comparator)
 	}
 
 	tests := []struct {
@@ -274,14 +274,12 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 		TransactionUUID: "latest",
 	}
 
-	fatalValidators := validation.Validators([]validation.Validator{
-		validation.NewestBootTimeValidator(latestEvent), validation.UniqueEventValidator(latestEvent, regex),
-	})
+	comparator := Comparators([]Comparator{NewestBootTimeComparator(), UniqueEventComparator(regex)})
 	var finder FinderFunc
 	if past {
-		finder = LastSessionFinder(new(mockValidator), fatalValidators)
+		finder = LastSessionFinder(new(mockValidator), comparator)
 	} else {
-		finder = CurrentSessionFinder(new(mockValidator), fatalValidators)
+		finder = CurrentSessionFinder(new(mockValidator), comparator)
 	}
 
 	tests := []struct {
@@ -307,7 +305,7 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 			},
 			latestEvent:   latestEvent,
 			expectedEvent: interpreter.Event{},
-			expectedErr:   validation.InvalidEventErr{},
+			expectedErr:   errNewerBootTime,
 		},
 		{
 			description: "Duplicate event found",
@@ -325,7 +323,7 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 			},
 			latestEvent:   latestEvent,
 			expectedEvent: interpreter.Event{},
-			expectedErr:   validation.InvalidEventErr{},
+			expectedErr:   errDuplicateEvent,
 		},
 	}
 
@@ -350,8 +348,8 @@ func testNotFound(t *testing.T, past bool) {
 		Birthdate:       now.UnixNano(),
 		TransactionUUID: "latest",
 	}
-	fatalValidators := new(mockValidator)
-	fatalValidators.On("Valid", mock.Anything).Return(true, nil)
+	comparator := new(mockComparator)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(true, nil)
 
 	tests := []struct {
 		description   string
@@ -438,9 +436,9 @@ func testNotFound(t *testing.T, past bool) {
 			}
 			var finder FinderFunc
 			if past {
-				finder = LastSessionFinder(mockVal, fatalValidators)
+				finder = LastSessionFinder(mockVal, comparator)
 			} else {
-				finder = CurrentSessionFinder(mockVal, fatalValidators)
+				finder = CurrentSessionFinder(mockVal, comparator)
 			}
 			event, err := finder(testEvents, latestEvent)
 			assert.Equal(tc.expectedEvent, event)
@@ -457,8 +455,8 @@ func testSuccess(t *testing.T, past bool) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	mockVal := new(mockValidator)
-	fatalValidators := new(mockValidator)
-	fatalValidators.On("Valid", mock.Anything).Return(true, nil)
+	comparator := new(mockComparator)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(true, nil)
 
 	latestEvent := interpreter.Event{
 		Destination:     "mac:112233445566/online",
@@ -527,9 +525,9 @@ func testSuccess(t *testing.T, past bool) {
 	assert := assert.New(t)
 	var finder FinderFunc
 	if past {
-		finder = LastSessionFinder(mockVal, fatalValidators)
+		finder = LastSessionFinder(mockVal, comparator)
 	} else {
-		finder = CurrentSessionFinder(mockVal, fatalValidators)
+		finder = CurrentSessionFinder(mockVal, comparator)
 	}
 	event, err := finder.Find(events, latestEvent)
 	assert.Equal(validEvent, event)
