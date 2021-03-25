@@ -27,6 +27,7 @@ import (
 
 var (
 	ErrInvalidEventType = errors.New("event type doesn't match")
+	ErrNonEvent         = errors.New("not an event")
 )
 
 // Validator validates an event, returning false and an error if the event is not valid
@@ -112,9 +113,14 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 // Event's destination is valid against the EventRegex and this regex.
 func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
-		if !interpreter.EventRegex.MatchString(e.Destination) || !regex.MatchString(e.Destination) {
+		if !interpreter.EventRegex.MatchString(e.Destination) {
+			return false, InvalidEventErr{OriginalErr: ErrNonEvent}
+		}
+
+		if !regex.MatchString(e.Destination) {
 			return false, InvalidEventErr{OriginalErr: ErrInvalidEventType}
 		}
+
 		return true, nil
 	}
 }

@@ -195,7 +195,7 @@ func TestDestinationValidator(t *testing.T) {
 				Destination: "some-prefix/device-id/some-event/112233445566/random",
 			},
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: ErrInvalidEventType},
+			expectedErr: ErrNonEvent,
 		},
 		{
 			description: "event type mismatch",
@@ -203,14 +203,14 @@ func TestDestinationValidator(t *testing.T) {
 				Destination: "event:device-status/mac:112233445566/random-event/random-string",
 			},
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: ErrInvalidEventType},
+			expectedErr: ErrInvalidEventType,
 		},
 		{
 			description: "Invalid event",
 			event: interpreter.Event{
 				Destination: "/random-event/",
 			},
-			expectedErr: InvalidEventErr{OriginalErr: ErrInvalidEventType},
+			expectedErr: ErrNonEvent,
 		},
 	}
 
