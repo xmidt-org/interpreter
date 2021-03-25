@@ -38,6 +38,9 @@ var (
 	ErrBirthdateParse   = errors.New("unable to parse birthdate from payload")
 	ErrBootTimeParse    = errors.New("unable to parse boot-time")
 	ErrBootTimeNotFound = errors.New("boot-time not found")
+
+	// EventRegex is the regex that an event's destination must match in order to parser the device id properly.
+	EventRegex = regexp.MustCompile(`^(?P<event>[^/]+)/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^/]+))/(?P<type>[^/\s]+)`)
 )
 
 // Event is the struct that contains the wrp.Message fields along with the birthdate
@@ -106,9 +109,9 @@ func (e Event) BootTime() (int64, error) {
 	return bootTime, err
 }
 
-// DeviceID gets the device id based on a regex
-func (e *Event) DeviceID(regex *regexp.Regexp) (string, error) {
-	match := regex.FindStringSubmatch(e.Destination)
+// DeviceID gets the device id based on the event regex
+func (e *Event) DeviceID() (string, error) {
+	match := EventRegex.FindStringSubmatch(e.Destination)
 	if len(match) < 3 {
 		return "", ErrParseDeviceID
 	}

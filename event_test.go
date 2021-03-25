@@ -3,7 +3,6 @@ package interpreter
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"testing"
 	"time"
 
@@ -171,7 +170,6 @@ func TestBootTime(t *testing.T) {
 }
 
 func TestGetDeviceID(t *testing.T) {
-	destinationRegex := regexp.MustCompile(`^(?P<event>[^/]+)/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^/]+))/(?P<type>[^/\s]+)`)
 	assert := assert.New(t)
 	tests := []struct {
 		description string
@@ -204,7 +202,7 @@ func TestGetDeviceID(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			e := Event{Destination: tc.destination}
-			deviceID, err := e.DeviceID(destinationRegex)
+			deviceID, err := e.DeviceID()
 			assert.Equal(tc.expectedID, deviceID)
 			if err != nil || tc.expectedErr != nil {
 				assert.True(errors.Is(err, tc.expectedErr))
