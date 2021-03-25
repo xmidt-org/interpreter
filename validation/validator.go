@@ -109,10 +109,10 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 }
 
 // DestinationValidator takes in a regex and returns a ValidatorFunc that checks if an
-// Event's destination is valid against this regex.
+// Event's destination is valid against the EventRegex and this regex.
 func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
-		if !regex.MatchString(e.Destination) {
+		if !interpreter.EventRegex.MatchString(e.Destination) || !regex.MatchString(e.Destination) {
 			return false, InvalidEventErr{OriginalErr: ErrInvalidEventType}
 		}
 		return true, nil
