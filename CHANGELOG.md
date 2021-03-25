@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 - Move initial code from `glaukos`. [#5](https://github.com/xmidt-org/interpreter/pull/5)
-- Add `Comparator` interface to compare events. [#12](https://github.com/xmidt-org/interpreter/pull/12)
+- Add `Comparator` interface to compare events. Update `DestinationValidator` to validate that an event destination matches the event regex. [#12](https://github.com/xmidt-org/interpreter/pull/12)
 
 ## [v0.0.1]
 - Initial creation
