@@ -75,10 +75,10 @@ func lastSessionFinder(events []interpreter.Event, currentEvent interpreter.Even
 			continue
 		}
 
-		// If comparator returns false, it means we should stop looking for an event
+		// If comparator returns true, it means we should stop looking for an event
 		// because there is something wrong with currentEvent, and we should not
 		// perform calculations using it.
-		if valid, err := comparator.Compare(event, currentEvent); !valid {
+		if match, err := comparator.Compare(event, currentEvent); match {
 			return event, false, err
 		}
 
@@ -133,10 +133,10 @@ func currentSessionFinder(events []interpreter.Event, currentEvent interpreter.E
 			continue
 		}
 
-		// If comparator returns false, it means we should stop looking for an event
+		// If comparator returns true, it means we should stop looking for an event
 		// because there is something wrong with currentEvent, and we should not
 		// perform calculations using it.
-		if valid, err := comparator.Compare(event, currentEvent); !valid {
+		if match, err := comparator.Compare(event, currentEvent); match {
 			return event, false, err
 		}
 
@@ -174,10 +174,10 @@ func EventHistoryIterator(comparator Comparator) FinderFunc {
 			if event.TransactionUUID == currentEvent.TransactionUUID {
 				continue
 			}
-			// If comparator returns false, it means we should stop looking for an event
+			// If comparator returns true, it means we should stop looking for an event
 			// because there is something wrong with currentEvent, and we should not
 			// perform calculations using it.
-			if valid, err := comparator.Compare(event, currentEvent); !valid {
+			if match, err := comparator.Compare(event, currentEvent); match {
 				return interpreter.Event{}, EventFinderErr{OriginalErr: err}
 			}
 		}

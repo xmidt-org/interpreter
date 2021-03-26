@@ -15,6 +15,7 @@ import (
 
 type testEvent struct {
 	event interpreter.Event
+	match bool
 	valid bool
 	err   error
 }
@@ -57,7 +58,7 @@ func TestEventHistoryIterator(t *testing.T) {
 			events: []testEvent{
 				testEvent{
 					event: latestEvent,
-					valid: true,
+					match: false,
 				},
 				testEvent{
 					event: interpreter.Event{
@@ -65,7 +66,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
-					valid: true,
+					match: false,
 				},
 			},
 			latestEvent:   latestEvent,
@@ -82,7 +83,7 @@ func TestEventHistoryIterator(t *testing.T) {
 			events: []testEvent{
 				testEvent{
 					event: latestEvent,
-					valid: true,
+					match: false,
 				},
 			},
 			latestEvent:   latestEvent,
@@ -97,7 +98,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
-					valid: true,
+					match: false,
 				},
 			},
 			latestEvent: interpreter.Event{
@@ -116,7 +117,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
-					valid: true,
+					match: false,
 				},
 			},
 			latestEvent: interpreter.Event{
@@ -136,7 +137,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
-					valid: true,
+					match: false,
 				},
 				testEvent{
 					event: interpreter.Event{
@@ -144,7 +145,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-3 * time.Minute).Unix())},
 						Birthdate:   now.Add(-3 * time.Minute).UnixNano(),
 					},
-					valid: false,
+					match: true,
 					err:   fatalError,
 				},
 			},
@@ -160,7 +161,7 @@ func TestEventHistoryIterator(t *testing.T) {
 			comparator := new(mockComparator)
 			events := make([]interpreter.Event, 0, len(tc.events))
 			for _, te := range tc.events {
-				comparator.On("Compare", te.event, tc.latestEvent).Return(te.valid, te.err)
+				comparator.On("Compare", te.event, tc.latestEvent).Return(te.match, te.err)
 				events = append(events, te.event)
 			}
 
@@ -182,7 +183,7 @@ func testError(t *testing.T, past bool) {
 
 	comparator := new(mockComparator)
 	fatalError := errors.New("invalid event")
-	comparator.On("Compare", mock.Anything, mock.Anything).Return(false, fatalError)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(true, fatalError)
 	var finder FinderFunc
 	if past {
 		finder = LastSessionFinder(new(mockValidator), comparator)
@@ -274,7 +275,7 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 		TransactionUUID: "latest",
 	}
 
-	comparator := Comparators([]Comparator{NewerBootTimeComparator(), UniqueEventComparator(regex)})
+	comparator := Comparators([]Comparator{OlderBootTimeComparator(), DuplicateEventComparator(regex)})
 	var finder FinderFunc
 	if past {
 		finder = LastSessionFinder(new(mockValidator), comparator)
@@ -349,7 +350,7 @@ func testNotFound(t *testing.T, past bool) {
 		TransactionUUID: "latest",
 	}
 	comparator := new(mockComparator)
-	comparator.On("Compare", mock.Anything, mock.Anything).Return(true, nil)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
 	tests := []struct {
 		description   string
@@ -400,7 +401,7 @@ func testNotFound(t *testing.T, past bool) {
 			expectedErr:   EventNotFoundErr,
 		},
 		{
-			description: "event matched not from correct session",
+			description: "event found not from correct session",
 			events: []testEvent{
 				testEvent{
 					event: interpreter.Event{
@@ -456,7 +457,7 @@ func testSuccess(t *testing.T, past bool) {
 	assert.Nil(t, err)
 	mockVal := new(mockValidator)
 	comparator := new(mockComparator)
-	comparator.On("Compare", mock.Anything, mock.Anything).Return(true, nil)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
 	latestEvent := interpreter.Event{
 		Destination:     "mac:112233445566/online",

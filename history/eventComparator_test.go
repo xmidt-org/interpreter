@@ -14,18 +14,18 @@ import (
 func TestComparators(t *testing.T) {
 	assert := assert.New(t)
 	testEvent := interpreter.Event{}
-	comparators := Comparators([]Comparator{testComparator(true, nil), testComparator(true, nil)})
-	valid, err := comparators.Compare(testEvent, interpreter.Event{})
-	assert.True(valid)
+	comparators := Comparators([]Comparator{testComparator(false, nil), testComparator(false, nil)})
+	match, err := comparators.Compare(testEvent, interpreter.Event{})
+	assert.False(match)
 	assert.Nil(err)
 
 	comparators = Comparators([]Comparator{
-		testComparator(true, nil),
-		testComparator(false, errors.New("invalid event")),
-		testComparator(false, errors.New("another invalid event")),
+		testComparator(false, nil),
+		testComparator(true, errors.New("invalid event")),
+		testComparator(true, errors.New("another invalid event")),
 	})
-	valid, err = comparators.Compare(testEvent, interpreter.Event{})
-	assert.False(valid)
+	match, err = comparators.Compare(testEvent, interpreter.Event{})
+	assert.True(match)
 	assert.Equal(errors.New("invalid event"), err)
 }
 
@@ -35,7 +35,7 @@ func testComparator(returnBool bool, returnErr error) ComparatorFunc {
 	}
 }
 
-func TestNewerBootTimeComparator(t *testing.T) {
+func TestOlderBootTimeComparator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	latestEvent := interpreter.Event{
@@ -43,12 +43,12 @@ func TestNewerBootTimeComparator(t *testing.T) {
 		TransactionUUID: "123",
 	}
 
-	comparator := NewerBootTimeComparator()
+	comparator := OlderBootTimeComparator()
 	tests := []struct {
 		description   string
 		historyEvent  interpreter.Event
 		incomingEvent interpreter.Event
-		valid         bool
+		match         bool
 		expectedErr   error
 	}{
 		{
@@ -60,7 +60,7 @@ func TestNewerBootTimeComparator(t *testing.T) {
 				TransactionUUID: "abc",
 			},
 			incomingEvent: latestEvent,
-			valid:         true,
+			match:         false,
 		},
 		{
 			description: "same event uuid",
@@ -71,7 +71,7 @@ func TestNewerBootTimeComparator(t *testing.T) {
 				TransactionUUID: "123",
 			},
 			incomingEvent: latestEvent,
-			valid:         true,
+			match:         false,
 		},
 		{
 			description: "boot-time not present",
@@ -79,7 +79,7 @@ func TestNewerBootTimeComparator(t *testing.T) {
 				Metadata:        map[string]string{},
 				TransactionUUID: "abc",
 			},
-			valid: true,
+			match: false,
 		},
 		{
 			description: "newer boot-time",
@@ -88,7 +88,7 @@ func TestNewerBootTimeComparator(t *testing.T) {
 				TransactionUUID: "abc",
 			},
 			incomingEvent: latestEvent,
-			valid:         false,
+			match:         true,
 			expectedErr:   errNewerBootTime,
 		},
 		{
@@ -100,7 +100,7 @@ func TestNewerBootTimeComparator(t *testing.T) {
 			incomingEvent: interpreter.Event{
 				TransactionUUID: "123",
 			},
-			valid:       false,
+			match:       true,
 			expectedErr: errNewerBootTime,
 		},
 	}
@@ -108,8 +108,8 @@ func TestNewerBootTimeComparator(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			valid, err := comparator.Compare(tc.historyEvent, tc.incomingEvent)
-			assert.Equal(tc.valid, valid)
+			match, err := comparator.Compare(tc.historyEvent, tc.incomingEvent)
+			assert.Equal(tc.match, match)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {
@@ -122,7 +122,7 @@ func TestNewerBootTimeComparator(t *testing.T) {
 	}
 }
 
-func TestUniqueEventComparator(t *testing.T) {
+func TestDuplicateEventComparator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	destRegex := regexp.MustCompile(".*/online")
@@ -133,12 +133,12 @@ func TestUniqueEventComparator(t *testing.T) {
 		Birthdate:       now.UnixNano(),
 	}
 
-	comparator := UniqueEventComparator(destRegex)
+	comparator := DuplicateEventComparator(destRegex)
 	tests := []struct {
 		description   string
 		historyEvent  interpreter.Event
 		incomingEvent interpreter.Event
-		valid         bool
+		match         bool
 		expectedErr   error
 	}{
 		{
@@ -152,7 +152,7 @@ func TestUniqueEventComparator(t *testing.T) {
 				Birthdate:       now.Add(-30 * time.Minute).UnixNano(),
 			},
 			incomingEvent: latestEvent,
-			valid:         true,
+			match:         false,
 		},
 		{
 			description: "same event uuid",
@@ -165,7 +165,7 @@ func TestUniqueEventComparator(t *testing.T) {
 				Birthdate:       now.UnixNano(),
 			},
 			incomingEvent: latestEvent,
-			valid:         true,
+			match:         false,
 		},
 		{
 			description: "event type mismatch",
@@ -178,7 +178,7 @@ func TestUniqueEventComparator(t *testing.T) {
 				Birthdate:       now.UnixNano(),
 			},
 			incomingEvent: latestEvent,
-			valid:         true,
+			match:         false,
 		},
 		{
 			description: "new event type mismatch",
@@ -198,7 +198,7 @@ func TestUniqueEventComparator(t *testing.T) {
 				TransactionUUID: "123",
 				Birthdate:       now.Add(time.Minute).UnixNano(),
 			},
-			valid: true,
+			match: false,
 		},
 		{
 			description: "boot-time missing",
@@ -209,7 +209,7 @@ func TestUniqueEventComparator(t *testing.T) {
 				Birthdate:       now.UnixNano(),
 			},
 			incomingEvent: latestEvent,
-			valid:         true,
+			match:         false,
 		},
 		{
 			description: "duplicate found, older birthdate",
@@ -220,7 +220,7 @@ func TestUniqueEventComparator(t *testing.T) {
 				Birthdate:       now.Add(-1 * time.Minute).UnixNano(),
 			},
 			incomingEvent: latestEvent,
-			valid:         false,
+			match:         true,
 			expectedErr:   errDuplicateEvent,
 		},
 		{
@@ -232,7 +232,7 @@ func TestUniqueEventComparator(t *testing.T) {
 				Birthdate:       now.UnixNano(),
 			},
 			incomingEvent: latestEvent,
-			valid:         false,
+			match:         true,
 			expectedErr:   errDuplicateEvent,
 		},
 		{
@@ -244,7 +244,7 @@ func TestUniqueEventComparator(t *testing.T) {
 				Birthdate:       now.Add(time.Minute).UnixNano(),
 			},
 			incomingEvent: latestEvent,
-			valid:         true,
+			match:         false,
 		},
 		{
 			description: "latest boot-time invalid",
@@ -257,15 +257,15 @@ func TestUniqueEventComparator(t *testing.T) {
 				TransactionUUID: "test",
 				Birthdate:       now.UnixNano(),
 			},
-			valid: true,
+			match: false,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			valid, err := comparator.Compare(tc.historyEvent, tc.incomingEvent)
-			assert.Equal(tc.valid, valid)
+			match, err := comparator.Compare(tc.historyEvent, tc.incomingEvent)
+			assert.Equal(tc.match, match)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {
