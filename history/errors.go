@@ -37,10 +37,10 @@ type EventFinderErr struct {
 
 func (e EventFinderErr) Error() string {
 	if e.OriginalErr != nil {
-		return fmt.Sprintf("event finder error: %v", e.OriginalErr)
+		return fmt.Sprintf("failed to find event: %v", e.OriginalErr)
 	}
 
-	return "event finder error"
+	return "failed to find event"
 }
 
 func (e EventFinderErr) Unwrap() error {

@@ -15,7 +15,7 @@ var (
 // Comparator compares two events and returns a boolean indicating if the second event is valid or not.
 // If invalid, an error is also returned.
 type Comparator interface {
-	Compare(interpreter.Event, interpreter.Event) (bool, error)
+	Compare(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error)
 }
 
 // ComparatorFunc is a function that compares two events.
@@ -41,10 +41,10 @@ func (c Comparators) Compare(baseEvent interpreter.Event, newEvent interpreter.E
 	return true, nil
 }
 
-// NewestBootTimeComparator returns a ComparatorFunc to check and see if baseEvent's boot-time is
+// NewerBootTimeComparator returns a ComparatorFunc to check and see if baseEvent's boot-time is
 // less than or equal to the newEvent's boot-time. NewestBootTimeComparator assumes that newEvent
 // has a valid boot-time and does not do any error-checking of newEvent's boot-time.
-func NewestBootTimeComparator() ComparatorFunc {
+func NewerBootTimeComparator() ComparatorFunc {
 	return func(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error) {
 		// baseEvent is newEvent, no need to compare boot-times
 		if baseEvent.TransactionUUID == newEvent.TransactionUUID {
@@ -79,7 +79,7 @@ func UniqueEventComparator(eventType *regexp.Regexp) ComparatorFunc {
 		}
 
 		// see if event is the type we are looking for
-		if eventType.MatchString(baseEvent.Destination) {
+		if eventType.MatchString(baseEvent.Destination) && eventType.MatchString(newEvent.Destination) {
 			latestBootTime, _ := newEvent.BootTime()
 			bootTime, err := baseEvent.BootTime()
 			if err != nil || bootTime <= 0 {

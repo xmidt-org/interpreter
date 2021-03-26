@@ -69,7 +69,7 @@ func TestEventFinderErr(t *testing.T) {
 			if tc.expectedErr != nil {
 				assert.Contains(tc.err.Error(), tc.expectedErr.Error())
 			}
-			assert.Contains(tc.err.Error(), "event finder error")
+			assert.Contains(tc.err.Error(), "failed to find event")
 			assert.Equal(tc.expectedErr, tc.err.Unwrap())
 		})
 	}

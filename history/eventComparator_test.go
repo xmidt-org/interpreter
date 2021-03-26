@@ -35,7 +35,7 @@ func testComparator(returnBool bool, returnErr error) ComparatorFunc {
 	}
 }
 
-func TestNewestBootTimeComparator(t *testing.T) {
+func TestNewerBootTimeComparator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	latestEvent := interpreter.Event{
@@ -43,7 +43,7 @@ func TestNewestBootTimeComparator(t *testing.T) {
 		TransactionUUID: "123",
 	}
 
-	comparator := NewestBootTimeComparator()
+	comparator := NewerBootTimeComparator()
 	tests := []struct {
 		description   string
 		historyEvent  interpreter.Event
@@ -127,6 +127,7 @@ func TestUniqueEventComparator(t *testing.T) {
 	assert.Nil(t, err)
 	destRegex := regexp.MustCompile(".*/online")
 	latestEvent := interpreter.Event{
+		Destination:     "mac:112233445566/online",
 		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 		TransactionUUID: "test",
 		Birthdate:       now.UnixNano(),
@@ -178,6 +179,26 @@ func TestUniqueEventComparator(t *testing.T) {
 			},
 			incomingEvent: latestEvent,
 			valid:         true,
+		},
+		{
+			description: "new event type mismatch",
+			historyEvent: interpreter.Event{
+				Destination: "mac:112233445566/online",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				TransactionUUID: "abc",
+				Birthdate:       now.UnixNano(),
+			},
+			incomingEvent: interpreter.Event{
+				Destination: "mac:112233445566/offline",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				TransactionUUID: "123",
+				Birthdate:       now.Add(time.Minute).UnixNano(),
+			},
+			valid: true,
 		},
 		{
 			description: "boot-time missing",

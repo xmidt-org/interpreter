@@ -274,7 +274,7 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 		TransactionUUID: "latest",
 	}
 
-	comparator := Comparators([]Comparator{NewestBootTimeComparator(), UniqueEventComparator(regex)})
+	comparator := Comparators([]Comparator{NewerBootTimeComparator(), UniqueEventComparator(regex)})
 	var finder FinderFunc
 	if past {
 		finder = LastSessionFinder(new(mockValidator), comparator)
