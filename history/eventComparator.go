@@ -12,8 +12,8 @@ var (
 	errDuplicateEvent = errors.New("duplicate event found")
 )
 
-// Comparator compares two events and returns a boolean indicating if the condition has been matched.
-// The comparator will also return an error when it deems appropriate.
+// Comparator compares two events and returns true if the condition has been matched.
+// A comparator will also return an error when it deems appropriate.
 type Comparator interface {
 	Compare(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error)
 }
@@ -30,15 +30,16 @@ func (c ComparatorFunc) Compare(baseEvent interpreter.Event, newEvent interprete
 type Comparators []Comparator
 
 // Compare runs through a list of Comparators and compares two events using
-// each comparator. Returns true and an error at the first
-// comparator that matches the condition that the comparator is looking for.
+// each comparator. Returns true on the first comparator that matches.
 func (c Comparators) Compare(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error) {
+	var err error
 	for _, comparator := range c {
 		if match, err := comparator.Compare(baseEvent, newEvent); match {
 			return true, err
 		}
 	}
-	return false, nil
+
+	return false, err
 }
 
 // OlderBootTimeComparator returns a ComparatorFunc to check and see if newEvent's boot-time is
