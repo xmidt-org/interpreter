@@ -42,7 +42,7 @@ func (c Comparators) Compare(baseEvent interpreter.Event, newEvent interpreter.E
 }
 
 // NewerBootTimeComparator returns a ComparatorFunc to check and see if baseEvent's boot-time is
-// less than or equal to the newEvent's boot-time. NewestBootTimeComparator assumes that newEvent
+// less than or equal to the newEvent's boot-time. NewerBootTimeComparator assumes that newEvent
 // has a valid boot-time and does not do any error-checking of newEvent's boot-time.
 func NewerBootTimeComparator() ComparatorFunc {
 	return func(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error) {
@@ -67,10 +67,11 @@ func NewerBootTimeComparator() ComparatorFunc {
 	}
 }
 
-// UniqueEventComparator returns a ComparatorFunc to check and see if newEvent is unique, meaning that
-// it does not share the same destination type and boot-time as baseEvent.
-// UniqueEventComparator assumes that newEvent has a valid boot-time
-// and does not do any error-checking of newEvent's boot-time.
+// UniqueEventComparator returns a ComparatorFunc to check and see if newEvent is unique. A duplicate event
+// in this case is defined as sharing the same event type and boot-time as the base event while having a birthdate
+// that is equal to or newer than baseEvent's birthdate.
+// UniqueEventComparator checks that newEvent and baseEvent match the eventType.
+// It assumes that newEvent has a valid boot-time and does not do any error-checking of newEvent's boot-time.
 func UniqueEventComparator(eventType *regexp.Regexp) ComparatorFunc {
 	return func(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error) {
 		// baseEvent is newEvent, no need to compare boot-times
