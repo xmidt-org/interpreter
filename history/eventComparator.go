@@ -13,7 +13,7 @@ var (
 )
 
 // Comparator compares two events and returns true if the condition has been matched.
-// A comparator will also return an error when it deems appropriate.
+// A Comparator can also return an error when it deems appropriate.
 type Comparator interface {
 	Compare(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error)
 }
