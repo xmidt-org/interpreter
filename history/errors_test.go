@@ -12,22 +12,22 @@ func TestEventCompareErr(t *testing.T) {
 	testErr := errors.New("test error")
 	tests := []struct {
 		description   string
-		err           EventCompareErr
+		err           ComparatorErr
 		expectedErr   error
 		expectedEvent interpreter.Event
 	}{
 		{
 			description: "No underlying error or event",
-			err:         EventCompareErr{},
+			err:         ComparatorErr{},
 		},
 		{
 			description: "Underlying error",
-			err:         EventCompareErr{OriginalErr: testErr},
+			err:         ComparatorErr{OriginalErr: testErr},
 			expectedErr: testErr,
 		},
 		{
 			description:   "Underlying event",
-			err:           EventCompareErr{ComparisonEvent: interpreter.Event{Destination: "test-dest"}},
+			err:           ComparatorErr{ComparisonEvent: interpreter.Event{Destination: "test-dest"}},
 			expectedEvent: interpreter.Event{Destination: "test-dest"},
 		},
 	}
@@ -38,7 +38,7 @@ func TestEventCompareErr(t *testing.T) {
 			if tc.expectedErr != nil {
 				assert.Contains(tc.err.Error(), tc.expectedErr.Error())
 			}
-			assert.Contains(tc.err.Error(), "history comparison: invalid event")
+			assert.Contains(tc.err.Error(), "comparator error")
 			assert.Equal(tc.expectedErr, tc.err.Unwrap())
 			assert.Equal(tc.expectedEvent, tc.err.Event())
 		})
