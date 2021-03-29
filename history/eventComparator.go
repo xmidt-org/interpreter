@@ -32,14 +32,12 @@ type Comparators []Comparator
 // Compare runs through a list of Comparators and compares two events using
 // each comparator. Returns true on the first comparator that matches.
 func (c Comparators) Compare(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error) {
-	var err error
 	for _, comparator := range c {
 		if match, err := comparator.Compare(baseEvent, newEvent); match {
 			return true, err
 		}
 	}
-
-	return false, err
+	return false, nil
 }
 
 // OlderBootTimeComparator returns a ComparatorFunc to check and see if newEvent's boot-time is
@@ -61,7 +59,7 @@ func OlderBootTimeComparator() ComparatorFunc {
 
 		// if this event has a boot-time more recent than the latest one, return an error
 		if bootTime > latestBootTime {
-			return true, ComparatorErr{OriginalErr: errNewerBootTime, ComparisonEvent: baseEvent}
+			return true, errNewerBootTime
 		}
 
 		return false, nil
@@ -92,7 +90,7 @@ func DuplicateEventComparator(eventType *regexp.Regexp) ComparatorFunc {
 			// If the boot-time is the same as the latestBootTime, and the birthdate is older or equal,
 			// this means that newEvent is a duplicate.
 			if bootTime == latestBootTime && baseEvent.Birthdate <= newEvent.Birthdate {
-				return true, ComparatorErr{OriginalErr: errDuplicateEvent, ComparisonEvent: baseEvent}
+				return true, errDuplicateEvent
 			}
 		}
 
