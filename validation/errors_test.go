@@ -14,7 +14,6 @@ func TestInvalidEventErr(t *testing.T) {
 	}
 	tests := []struct {
 		description   string
-		msg           string
 		underlyingErr error
 		expectedLabel string
 	}{

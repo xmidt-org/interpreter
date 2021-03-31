@@ -15,6 +15,7 @@ import (
 
 type testEvent struct {
 	event interpreter.Event
+	match bool
 	valid bool
 	err   error
 }
@@ -57,7 +58,7 @@ func TestEventHistoryIterator(t *testing.T) {
 			events: []testEvent{
 				testEvent{
 					event: latestEvent,
-					valid: true,
+					match: false,
 				},
 				testEvent{
 					event: interpreter.Event{
@@ -65,7 +66,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
-					valid: true,
+					match: false,
 				},
 			},
 			latestEvent:   latestEvent,
@@ -82,7 +83,7 @@ func TestEventHistoryIterator(t *testing.T) {
 			events: []testEvent{
 				testEvent{
 					event: latestEvent,
-					valid: true,
+					match: false,
 				},
 			},
 			latestEvent:   latestEvent,
@@ -97,7 +98,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
-					valid: true,
+					match: false,
 				},
 			},
 			latestEvent: interpreter.Event{
@@ -116,7 +117,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
-					valid: true,
+					match: false,
 				},
 			},
 			latestEvent: interpreter.Event{
@@ -136,7 +137,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
 					},
-					valid: true,
+					match: false,
 				},
 				testEvent{
 					event: interpreter.Event{
@@ -144,7 +145,7 @@ func TestEventHistoryIterator(t *testing.T) {
 						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-3 * time.Minute).Unix())},
 						Birthdate:   now.Add(-3 * time.Minute).UnixNano(),
 					},
-					valid: false,
+					match: true,
 					err:   fatalError,
 				},
 			},
@@ -157,14 +158,14 @@ func TestEventHistoryIterator(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			fatalValidators := new(mockValidator)
+			comparator := new(mockComparator)
 			events := make([]interpreter.Event, 0, len(tc.events))
 			for _, te := range tc.events {
-				fatalValidators.On("Valid", te.event).Return(te.valid, te.err)
+				comparator.On("Compare", te.event, tc.latestEvent).Return(te.match, te.err)
 				events = append(events, te.event)
 			}
 
-			finder := EventHistoryIterator(fatalValidators)
+			finder := EventHistoryIterator(comparator)
 			event, err := finder.Find(events, tc.latestEvent)
 			assert.Equal(tc.expectedEvent, event)
 			if tc.expectedErr == nil || err == nil {
@@ -180,14 +181,14 @@ func testError(t *testing.T, past bool) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 
-	fatalValidators := new(mockValidator)
+	comparator := new(mockComparator)
 	fatalError := errors.New("invalid event")
-	fatalValidators.On("Valid", mock.Anything).Return(false, fatalError)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(true, fatalError)
 	var finder FinderFunc
 	if past {
-		finder = LastSessionFinder(new(mockValidator), fatalValidators)
+		finder = LastSessionFinder(new(mockValidator), comparator)
 	} else {
-		finder = CurrentSessionFinder(new(mockValidator), fatalValidators)
+		finder = CurrentSessionFinder(new(mockValidator), comparator)
 	}
 
 	tests := []struct {
@@ -274,14 +275,12 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 		TransactionUUID: "latest",
 	}
 
-	fatalValidators := validation.Validators([]validation.Validator{
-		validation.NewestBootTimeValidator(latestEvent), validation.UniqueEventValidator(latestEvent, regex),
-	})
+	comparator := Comparators([]Comparator{OlderBootTimeComparator(), DuplicateEventComparator(regex)})
 	var finder FinderFunc
 	if past {
-		finder = LastSessionFinder(new(mockValidator), fatalValidators)
+		finder = LastSessionFinder(new(mockValidator), comparator)
 	} else {
-		finder = CurrentSessionFinder(new(mockValidator), fatalValidators)
+		finder = CurrentSessionFinder(new(mockValidator), comparator)
 	}
 
 	tests := []struct {
@@ -307,7 +306,7 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 			},
 			latestEvent:   latestEvent,
 			expectedEvent: interpreter.Event{},
-			expectedErr:   validation.InvalidEventErr{},
+			expectedErr:   errNewerBootTime,
 		},
 		{
 			description: "Duplicate event found",
@@ -325,7 +324,7 @@ func testDuplicateAndNewer(t *testing.T, past bool) {
 			},
 			latestEvent:   latestEvent,
 			expectedEvent: interpreter.Event{},
-			expectedErr:   validation.InvalidEventErr{},
+			expectedErr:   errDuplicateEvent,
 		},
 	}
 
@@ -350,8 +349,8 @@ func testNotFound(t *testing.T, past bool) {
 		Birthdate:       now.UnixNano(),
 		TransactionUUID: "latest",
 	}
-	fatalValidators := new(mockValidator)
-	fatalValidators.On("Valid", mock.Anything).Return(true, nil)
+	comparator := new(mockComparator)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
 	tests := []struct {
 		description   string
@@ -402,7 +401,7 @@ func testNotFound(t *testing.T, past bool) {
 			expectedErr:   EventNotFoundErr,
 		},
 		{
-			description: "event matched not from correct session",
+			description: "event found not from correct session",
 			events: []testEvent{
 				testEvent{
 					event: interpreter.Event{
@@ -438,9 +437,9 @@ func testNotFound(t *testing.T, past bool) {
 			}
 			var finder FinderFunc
 			if past {
-				finder = LastSessionFinder(mockVal, fatalValidators)
+				finder = LastSessionFinder(mockVal, comparator)
 			} else {
-				finder = CurrentSessionFinder(mockVal, fatalValidators)
+				finder = CurrentSessionFinder(mockVal, comparator)
 			}
 			event, err := finder(testEvents, latestEvent)
 			assert.Equal(tc.expectedEvent, event)
@@ -457,8 +456,8 @@ func testSuccess(t *testing.T, past bool) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	mockVal := new(mockValidator)
-	fatalValidators := new(mockValidator)
-	fatalValidators.On("Valid", mock.Anything).Return(true, nil)
+	comparator := new(mockComparator)
+	comparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
 	latestEvent := interpreter.Event{
 		Destination:     "mac:112233445566/online",
@@ -499,6 +498,24 @@ func testSuccess(t *testing.T, past bool) {
 		},
 		testEvent{
 			event: interpreter.Event{
+				Destination:     "mac:112233445566/online",
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+				Birthdate:       now.Add(-30 * time.Minute).UnixNano(),
+				TransactionUUID: "test",
+			},
+			valid: true,
+		},
+		testEvent{
+			event: interpreter.Event{
+				Destination:     "mac:112233445566/online",
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
+				Birthdate:       now.Add(time.Minute).UnixNano(),
+				TransactionUUID: "test",
+			},
+			valid: true,
+		},
+		testEvent{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/offline",
 				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 				Birthdate:       now.Add(-1 * time.Hour).UnixNano(),
@@ -527,9 +544,9 @@ func testSuccess(t *testing.T, past bool) {
 	assert := assert.New(t)
 	var finder FinderFunc
 	if past {
-		finder = LastSessionFinder(mockVal, fatalValidators)
+		finder = LastSessionFinder(mockVal, comparator)
 	} else {
-		finder = CurrentSessionFinder(mockVal, fatalValidators)
+		finder = CurrentSessionFinder(mockVal, comparator)
 	}
 	event, err := finder.Find(events, latestEvent)
 	assert.Equal(validEvent, event)
