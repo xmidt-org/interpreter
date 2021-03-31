@@ -498,6 +498,24 @@ func testSuccess(t *testing.T, past bool) {
 		},
 		testEvent{
 			event: interpreter.Event{
+				Destination:     "mac:112233445566/online",
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
+				Birthdate:       now.Add(-30 * time.Minute).UnixNano(),
+				TransactionUUID: "test",
+			},
+			valid: true,
+		},
+		testEvent{
+			event: interpreter.Event{
+				Destination:     "mac:112233445566/online",
+				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
+				Birthdate:       now.Add(time.Minute).UnixNano(),
+				TransactionUUID: "test",
+			},
+			valid: true,
+		},
+		testEvent{
+			event: interpreter.Event{
 				Destination:     "mac:112233445566/offline",
 				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
 				Birthdate:       now.Add(-1 * time.Hour).UnixNano(),
