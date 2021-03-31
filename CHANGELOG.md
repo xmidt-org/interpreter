@@ -5,11 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.0.2]
 - Move initial code from `glaukos`. [#5](https://github.com/xmidt-org/interpreter/pull/5)
 - Add `Comparator` interface to compare events. Update `DestinationValidator` to validate that an event destination matches the event regex. [#12](https://github.com/xmidt-org/interpreter/pull/12)
 
 ## [v0.0.1]
 - Initial creation
 
-[Unreleased]: https://github.com/xmidt-org/interpreter/compare/v0.0.1..HEAD
+[Unreleased]: https://github.com/xmidt-org/interpreter/compare/v0.0.2..HEAD
+[v0.0.2]: https://github.com/xmidt-org/interpreter/compare/v0.0.1...v0.0.2
 [v0.0.1]: https://github.com/xmidt-org/interpreter/compare/0.0.0...v0.0.1
