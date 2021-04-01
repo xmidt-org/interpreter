@@ -103,7 +103,7 @@ func (e InvalidBirthdateErr) ErrorLabel() string {
 
 type InvalidDestinationErr struct {
 	OriginalErr error
-	errLabel    string
+	ErrLabel    string
 }
 
 func (e InvalidDestinationErr) Error() string {
@@ -118,8 +118,8 @@ func (e InvalidDestinationErr) Unwrap() error {
 }
 
 func (e InvalidDestinationErr) ErrorLabel() string {
-	if len(e.errLabel) > 0 {
-		return strings.ReplaceAll(e.errLabel, " ", "_")
+	if len(e.ErrLabel) > 0 {
+		return strings.ReplaceAll(e.ErrLabel, " ", "_")
 	}
 
 	return invalidDestinationLabel

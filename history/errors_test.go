@@ -15,20 +15,30 @@ func TestEventCompareErr(t *testing.T) {
 		err           ComparatorErr
 		expectedErr   error
 		expectedEvent interpreter.Event
+		expectedLabel string
 	}{
 		{
-			description: "No underlying error or event",
-			err:         ComparatorErr{},
+			description:   "No underlying error or event",
+			err:           ComparatorErr{},
+			expectedLabel: comparatorErrLabel,
 		},
 		{
-			description: "Underlying error",
-			err:         ComparatorErr{OriginalErr: testErr},
-			expectedErr: testErr,
+			description:   "Underlying error",
+			err:           ComparatorErr{OriginalErr: testErr},
+			expectedErr:   testErr,
+			expectedLabel: comparatorErrLabel,
 		},
 		{
 			description:   "Underlying event",
 			err:           ComparatorErr{ComparisonEvent: interpreter.Event{Destination: "test-dest"}},
 			expectedEvent: interpreter.Event{Destination: "test-dest"},
+			expectedLabel: comparatorErrLabel,
+		},
+		{
+			description:   "With Label",
+			err:           ComparatorErr{OriginalErr: testErr, ErrLabel: "test_error"},
+			expectedErr:   testErr,
+			expectedLabel: "test_error",
 		},
 	}
 
@@ -41,6 +51,7 @@ func TestEventCompareErr(t *testing.T) {
 			assert.Contains(tc.err.Error(), "comparator error")
 			assert.Equal(tc.expectedErr, tc.err.Unwrap())
 			assert.Equal(tc.expectedEvent, tc.err.Event())
+			assert.Equal(tc.expectedLabel, tc.err.ErrorLabel())
 		})
 	}
 }
@@ -48,18 +59,27 @@ func TestEventCompareErr(t *testing.T) {
 func TestEventFinderErr(t *testing.T) {
 	testErr := errors.New("test error")
 	tests := []struct {
-		description string
-		err         EventFinderErr
-		expectedErr error
+		description   string
+		err           EventFinderErr
+		expectedErr   error
+		expectedLabel string
 	}{
 		{
-			description: "No underlying error or event",
-			err:         EventFinderErr{},
+			description:   "No underlying error or event",
+			err:           EventFinderErr{},
+			expectedLabel: finderErrLabel,
 		},
 		{
-			description: "Underlying error",
-			err:         EventFinderErr{OriginalErr: testErr},
-			expectedErr: testErr,
+			description:   "Underlying error",
+			err:           EventFinderErr{OriginalErr: testErr},
+			expectedErr:   testErr,
+			expectedLabel: finderErrLabel,
+		},
+		{
+			description:   "With Label",
+			err:           EventFinderErr{OriginalErr: testErr, ErrLabel: "test_error"},
+			expectedErr:   testErr,
+			expectedLabel: "test_error",
 		},
 	}
 
@@ -71,6 +91,7 @@ func TestEventFinderErr(t *testing.T) {
 			}
 			assert.Contains(tc.err.Error(), "failed to find event")
 			assert.Equal(tc.expectedErr, tc.err.Unwrap())
+			assert.Equal(tc.expectedLabel, tc.err.ErrorLabel())
 		})
 	}
 }

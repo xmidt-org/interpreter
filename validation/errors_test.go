@@ -134,11 +134,12 @@ func TestInvalidDestinationErr(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			err := InvalidDestinationErr{OriginalErr: tc.underlyingErr, errLabel: tc.label}
+			err := InvalidDestinationErr{OriginalErr: tc.underlyingErr, ErrLabel: tc.label}
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Equal(tc.underlyingErr, err.Unwrap())
+			assert.Contains(err.Error(), "invalid destination")
 			assert.Equal(tc.expectedLabel, err.ErrorLabel())
 		})
 	}

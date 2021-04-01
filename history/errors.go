@@ -19,8 +19,14 @@ package history
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/xmidt-org/interpreter"
+)
+
+const (
+	comparatorErrLabel = "comparator_err"
+	finderErrLabel     = "event_finder_err"
 )
 
 // ComparatorErr is used when an error is found with a trigger event
@@ -28,6 +34,7 @@ import (
 type ComparatorErr struct {
 	OriginalErr     error
 	ComparisonEvent interpreter.Event
+	ErrLabel        string
 }
 
 func (e ComparatorErr) Error() string {
@@ -42,6 +49,14 @@ func (e ComparatorErr) Unwrap() error {
 	return e.OriginalErr
 }
 
+func (e ComparatorErr) ErrorLabel() string {
+	if len(e.ErrLabel) > 0 {
+		return strings.ReplaceAll(e.ErrLabel, " ", "_")
+	}
+
+	return comparatorErrLabel
+}
+
 // Event returns the event in history that caused the error to be thrown.
 func (e ComparatorErr) Event() interpreter.Event {
 	return e.ComparisonEvent
@@ -50,6 +65,7 @@ func (e ComparatorErr) Event() interpreter.Event {
 // EventFinderErr is an error used by EventFinder.
 type EventFinderErr struct {
 	OriginalErr error
+	ErrLabel    string
 }
 
 func (e EventFinderErr) Error() string {
@@ -62,4 +78,12 @@ func (e EventFinderErr) Error() string {
 
 func (e EventFinderErr) Unwrap() error {
 	return e.OriginalErr
+}
+
+func (e EventFinderErr) ErrorLabel() string {
+	if len(e.ErrLabel) > 0 {
+		return strings.ReplaceAll(e.ErrLabel, " ", "_")
+	}
+
+	return finderErrLabel
 }
