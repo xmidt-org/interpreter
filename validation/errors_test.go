@@ -106,3 +106,40 @@ func TestInvalidBirthdateErr(t *testing.T) {
 		})
 	}
 }
+
+func TestInvalidDestinationErr(t *testing.T) {
+	tests := []struct {
+		description   string
+		underlyingErr error
+		label         string
+		expectedLabel string
+	}{
+		{
+			description:   "No underlying error",
+			expectedLabel: invalidDestinationLabel,
+		},
+		{
+			description:   "Underlying error",
+			underlyingErr: errors.New("test error"),
+			expectedLabel: invalidDestinationLabel,
+		},
+		{
+			description:   "Underlying error with label",
+			underlyingErr: errors.New("test error"),
+			label:         "test_error",
+			expectedLabel: "test_error",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			err := InvalidDestinationErr{OriginalErr: tc.underlyingErr, errLabel: tc.label}
+			if tc.underlyingErr != nil {
+				assert.Contains(err.Error(), tc.underlyingErr.Error())
+			}
+			assert.Equal(tc.underlyingErr, err.Unwrap())
+			assert.Equal(tc.expectedLabel, err.ErrorLabel())
+		})
+	}
+}
