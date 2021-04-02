@@ -29,6 +29,11 @@ var (
 	errDuplicateEvent = errors.New("duplicate event found")
 )
 
+const (
+	newerBootTimeReason  = "newer_boottime_found"
+	duplicateEventReason = "duplicate_event_found"
+)
+
 // Comparator compares two events and returns true if the condition has been matched.
 // A Comparator can also return an error when it deems appropriate.
 type Comparator interface {
@@ -76,7 +81,7 @@ func OlderBootTimeComparator() ComparatorFunc {
 
 		// if this event has a boot-time more recent than the latest one, return an error
 		if bootTime > latestBootTime {
-			return true, errNewerBootTime
+			return true, ComparatorErr{OriginalErr: errNewerBootTime, ErrLabel: newerBootTimeReason, ComparisonEvent: baseEvent}
 		}
 
 		return false, nil
@@ -107,7 +112,7 @@ func DuplicateEventComparator(eventType *regexp.Regexp) ComparatorFunc {
 			// If the boot-time is the same as the latestBootTime, and the birthdate is older or equal,
 			// this means that newEvent is a duplicate.
 			if bootTime == latestBootTime && baseEvent.Birthdate <= newEvent.Birthdate {
-				return true, errDuplicateEvent
+				return true, ComparatorErr{OriginalErr: errDuplicateEvent, ErrLabel: duplicateEventReason, ComparisonEvent: baseEvent}
 			}
 		}
 

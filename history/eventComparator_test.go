@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/xmidt-org/interpreter"
+	"github.com/xmidt-org/interpreter/validation"
 )
 
 func TestComparators(t *testing.T) {
@@ -117,6 +118,10 @@ func TestOlderBootTimeComparator(t *testing.T) {
 					fmt.Errorf("error [%v] doesn't contain error [%v] in its err chain",
 						err, tc.expectedErr),
 				)
+
+				var logError validation.MetricsLogError
+				assert.True(errors.As(err, &logError))
+				assert.Equal(newerBootTimeReason, logError.ErrorLabel())
 			}
 		})
 	}
@@ -273,6 +278,9 @@ func TestDuplicateEventComparator(t *testing.T) {
 					fmt.Errorf("error [%v] doesn't contain error [%v] in its err chain",
 						err, tc.expectedErr),
 				)
+				var logError validation.MetricsLogError
+				assert.True(errors.As(err, &logError))
+				assert.Equal(duplicateEventReason, logError.ErrorLabel())
 			}
 		})
 	}

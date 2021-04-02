@@ -114,11 +114,21 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		if !interpreter.EventRegex.MatchString(e.Destination) {
-			return false, InvalidEventErr{OriginalErr: ErrNonEvent}
+			return false, InvalidEventErr{
+				OriginalErr: InvalidDestinationErr{
+					OriginalErr: ErrNonEvent,
+					ErrLabel:    nonEventReason,
+				},
+			}
 		}
 
 		if !regex.MatchString(e.Destination) {
-			return false, InvalidEventErr{OriginalErr: ErrInvalidEventType}
+			return false, InvalidEventErr{
+				OriginalErr: InvalidDestinationErr{
+					OriginalErr: ErrInvalidEventType,
+					ErrLabel:    eventMismatchReason,
+				},
+			}
 		}
 
 		return true, nil

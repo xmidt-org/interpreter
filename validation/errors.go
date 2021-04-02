@@ -24,9 +24,13 @@ import (
 )
 
 const (
-	invalidEventLabel     = "invalid_event_err"
-	invalidBootTimeLabel  = "invalid_boot_time"
-	invalidBirthdateLabel = "invalid_birthdate"
+	invalidEventReason       = "invalid_event_err"
+	invalidBootTimeReason    = "invalid_boot_time"
+	invalidBirthdateReason   = "invalid_birthdate"
+	invalidDestinationReason = "invalid_destination"
+
+	nonEventReason      = "non_event"
+	eventMismatchReason = "event_type_mismatch"
 )
 
 // MetricsLogError is an optional interface for errors to implement if the error should be
@@ -56,7 +60,7 @@ func (e InvalidEventErr) ErrorLabel() string {
 		return strings.Replace(err.ErrorLabel(), " ", "_", -1)
 	}
 
-	return invalidEventLabel
+	return invalidEventReason
 }
 
 type InvalidBootTimeErr struct {
@@ -75,7 +79,7 @@ func (e InvalidBootTimeErr) Unwrap() error {
 }
 
 func (e InvalidBootTimeErr) ErrorLabel() string {
-	return invalidBootTimeLabel
+	return invalidBootTimeReason
 }
 
 type InvalidBirthdateErr struct {
@@ -94,5 +98,29 @@ func (e InvalidBirthdateErr) Unwrap() error {
 }
 
 func (e InvalidBirthdateErr) ErrorLabel() string {
-	return invalidBirthdateLabel
+	return invalidBirthdateReason
+}
+
+type InvalidDestinationErr struct {
+	OriginalErr error
+	ErrLabel    string
+}
+
+func (e InvalidDestinationErr) Error() string {
+	if e.OriginalErr != nil {
+		return fmt.Sprintf("invalid destination: %v", e.OriginalErr)
+	}
+	return "invalid destination"
+}
+
+func (e InvalidDestinationErr) Unwrap() error {
+	return e.OriginalErr
+}
+
+func (e InvalidDestinationErr) ErrorLabel() string {
+	if len(e.ErrLabel) > 0 {
+		return strings.ReplaceAll(e.ErrLabel, " ", "_")
+	}
+
+	return invalidDestinationReason
 }
