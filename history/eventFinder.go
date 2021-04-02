@@ -79,7 +79,7 @@ func lastSessionFinder(events []interpreter.Event, currentEvent interpreter.Even
 		// because there is something wrong with currentEvent, and we should not
 		// perform calculations using it.
 		if match, err := comparator.Compare(event, currentEvent); match {
-			return event, false, ComparatorErr{OriginalErr: err, ComparisonEvent: event}
+			return event, false, err
 		}
 
 		// figure out the latest previous boot-time
@@ -137,7 +137,7 @@ func currentSessionFinder(events []interpreter.Event, currentEvent interpreter.E
 		// because there is something wrong with currentEvent, and we should not
 		// perform calculations using it.
 		if match, err := comparator.Compare(event, currentEvent); match {
-			return event, false, ComparatorErr{OriginalErr: err, ComparisonEvent: event}
+			return event, false, err
 		}
 
 		// Get the bootTime from the event we are checking. If boot-time
@@ -178,7 +178,7 @@ func EventHistoryIterator(comparator Comparator) FinderFunc {
 			// because there is something wrong with currentEvent, and we should not
 			// perform calculations using it.
 			if match, err := comparator.Compare(event, currentEvent); match {
-				return interpreter.Event{}, EventFinderErr{OriginalErr: ComparatorErr{OriginalErr: err, ComparisonEvent: event}}
+				return interpreter.Event{}, EventFinderErr{OriginalErr: err}
 			}
 		}
 
