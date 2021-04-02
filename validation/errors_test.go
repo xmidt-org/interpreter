@@ -19,12 +19,12 @@ func TestInvalidEventErr(t *testing.T) {
 	}{
 		{
 			description:   "No underlying error",
-			expectedLabel: invalidEventLabel,
+			expectedLabel: invalidEventReason,
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedLabel: invalidEventLabel,
+			expectedLabel: invalidEventReason,
 		},
 		{
 			description:   "Underlying error label",
@@ -55,12 +55,12 @@ func TestInvalidBootTimeErr(t *testing.T) {
 	}{
 		{
 			description:   "No underlying error",
-			expectedLabel: invalidBootTimeLabel,
+			expectedLabel: invalidBootTimeReason,
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedLabel: invalidBootTimeLabel,
+			expectedLabel: invalidBootTimeReason,
 		},
 	}
 
@@ -85,12 +85,12 @@ func TestInvalidBirthdateErr(t *testing.T) {
 	}{
 		{
 			description:   "No underlying error",
-			expectedLabel: invalidBirthdateLabel,
+			expectedLabel: invalidBirthdateReason,
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedLabel: invalidBirthdateLabel,
+			expectedLabel: invalidBirthdateReason,
 		},
 	}
 
@@ -116,12 +116,12 @@ func TestInvalidDestinationErr(t *testing.T) {
 	}{
 		{
 			description:   "No underlying error",
-			expectedLabel: invalidDestinationLabel,
+			expectedLabel: invalidDestinationReason,
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedLabel: invalidDestinationLabel,
+			expectedLabel: invalidDestinationReason,
 		},
 		{
 			description:   "Underlying error with label",

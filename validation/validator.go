@@ -117,7 +117,7 @@ func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 			return false, InvalidEventErr{
 				OriginalErr: InvalidDestinationErr{
 					OriginalErr: ErrNonEvent,
-					ErrLabel:    nonEventLabel,
+					ErrLabel:    nonEventReason,
 				},
 			}
 		}
@@ -126,7 +126,7 @@ func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 			return false, InvalidEventErr{
 				OriginalErr: InvalidDestinationErr{
 					OriginalErr: ErrInvalidEventType,
-					ErrLabel:    eventMismatchLabel,
+					ErrLabel:    eventMismatchReason,
 				},
 			}
 		}
