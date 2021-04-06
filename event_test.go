@@ -229,7 +229,12 @@ func TestType(t *testing.T) {
 		{
 			destination:  "event:device-status/mac/online",
 			expectedErr:  ErrTypeNotFound,
-			expectedType: "unknown",
+			expectedType: "",
+		},
+		{
+			destination:  "some-event",
+			expectedErr:  ErrTypeNotFound,
+			expectedType: "",
 		},
 	}
 
