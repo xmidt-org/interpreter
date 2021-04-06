@@ -212,6 +212,41 @@ func TestGetDeviceID(t *testing.T) {
 	}
 }
 
+func TestType(t *testing.T) {
+	tests := []struct {
+		destination  string
+		expectedErr  error
+		expectedType string
+	}{
+		{
+			destination:  "event:device-status/mac:112233445566/online",
+			expectedType: "online",
+		},
+		{
+			destination:  "event:device-status/mac:112233445566/online/more-random-string/123random",
+			expectedType: "online",
+		},
+		{
+			destination:  "event:device-status/mac/online",
+			expectedErr:  ErrTypeNotFound,
+			expectedType: "unknown",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.destination, func(t *testing.T) {
+			assert := assert.New(t)
+			e := Event{
+				Destination: tc.destination,
+			}
+
+			eventType, err := e.EventType()
+			assert.Equal(tc.expectedType, eventType)
+			assert.Equal(tc.expectedErr, err)
+		})
+	}
+}
+
 func TestGetMetadataValue(t *testing.T) {
 	tests := []struct {
 		description string
