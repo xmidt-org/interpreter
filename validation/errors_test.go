@@ -16,6 +16,7 @@ func TestInvalidEventErr(t *testing.T) {
 		description   string
 		underlyingErr error
 		expectedLabel string
+		tag           Tag
 	}{
 		{
 			description:   "No underlying error",
@@ -31,18 +32,24 @@ func TestInvalidEventErr(t *testing.T) {
 			underlyingErr: testErr,
 			expectedLabel: "test_error",
 		},
+		{
+			description:   "With tag",
+			tag:           InvalidBootTime,
+			expectedLabel: invalidEventReason,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			err := InvalidEventErr{OriginalErr: tc.underlyingErr}
+			err := InvalidEventErr{OriginalErr: tc.underlyingErr, ErrorTag: tc.tag}
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Contains(err.Error(), "event invalid")
 			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Equal(tc.expectedLabel, err.ErrorLabel())
+			assert.Equal(tc.tag, err.Tag())
 		})
 	}
 }
@@ -52,6 +59,7 @@ func TestInvalidBootTimeErr(t *testing.T) {
 		description   string
 		underlyingErr error
 		expectedLabel string
+		tag           Tag
 	}{
 		{
 			description:   "No underlying error",
@@ -62,17 +70,30 @@ func TestInvalidBootTimeErr(t *testing.T) {
 			underlyingErr: errors.New("test error"),
 			expectedLabel: invalidBootTimeReason,
 		},
+		{
+			description:   "Underlying tag",
+			expectedLabel: invalidBootTimeReason,
+			tag:           OldBootTime,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
 			err := InvalidBootTimeErr{OriginalErr: tc.underlyingErr}
+			if tc.tag != Unknown {
+				err.ErrorTag = tc.tag
+			}
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Equal(tc.expectedLabel, err.ErrorLabel())
+			if tc.tag != Unknown {
+				assert.Equal(tc.tag, err.Tag())
+			} else {
+				assert.Equal(InvalidBootTime, err.Tag())
+			}
 		})
 	}
 }

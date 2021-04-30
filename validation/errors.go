@@ -39,8 +39,13 @@ type MetricsLogError interface {
 	ErrorLabel() string
 }
 
+type TaggedError interface {
+	Tag() Tag
+}
+
 type InvalidEventErr struct {
 	OriginalErr error
+	ErrorTag    Tag
 }
 
 func (e InvalidEventErr) Error() string {
@@ -63,8 +68,13 @@ func (e InvalidEventErr) ErrorLabel() string {
 	return invalidEventReason
 }
 
+func (e InvalidEventErr) Tag() Tag {
+	return e.ErrorTag
+}
+
 type InvalidBootTimeErr struct {
 	OriginalErr error
+	ErrorTag    Tag
 }
 
 func (e InvalidBootTimeErr) Error() string {
@@ -80,6 +90,13 @@ func (e InvalidBootTimeErr) Unwrap() error {
 
 func (e InvalidBootTimeErr) ErrorLabel() string {
 	return invalidBootTimeReason
+}
+
+func (e InvalidBootTimeErr) Tag() Tag {
+	if e.ErrorTag == Unknown {
+		return InvalidBootTime
+	}
+	return e.ErrorTag
 }
 
 type InvalidBirthdateErr struct {

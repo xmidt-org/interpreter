@@ -40,7 +40,8 @@ func TestBootTimeValidator(t *testing.T) {
 	assert.Nil(t, err)
 	currTime := func() time.Time { return now }
 	validation := TimeValidator{ValidFrom: -2 * time.Hour, ValidTo: time.Hour, Current: currTime}
-	validator := BootTimeValidator(validation)
+	year := 2015
+	validator := BootTimeValidator(validation, year)
 	tests := []struct {
 		description string
 		event       interpreter.Event
@@ -58,7 +59,7 @@ func TestBootTimeValidator(t *testing.T) {
 			valid: true,
 		},
 		{
-			description: "Past boot-time",
+			description: "Old boot-time",
 			event: interpreter.Event{
 				Birthdate: now.Add(-1 * time.Hour).UnixNano(),
 				Metadata: map[string]string{
@@ -66,7 +67,18 @@ func TestBootTimeValidator(t *testing.T) {
 				},
 			},
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: InvalidBootTimeErr{OriginalErr: ErrPastDate}},
+			expectedErr: InvalidBootTimeErr{OriginalErr: ErrPastDate, ErrorTag: OldBootTime},
+		},
+		{
+			description: "Past 2015 boot-time",
+			event: interpreter.Event{
+				Birthdate: now.Add(-1 * time.Hour).UnixNano(),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(time.Date(year, now.Add(time.Hour*-24).Month(), now.Add(time.Hour*-24).Day(), 0, 0, 0, 0, time.Local).Unix()),
+				},
+			},
+			valid:       false,
+			expectedErr: InvalidBootTimeErr{OriginalErr: ErrInvalidBootTime, ErrorTag: InvalidBootTime},
 		},
 		{
 			description: "Future boot-time",
@@ -77,7 +89,7 @@ func TestBootTimeValidator(t *testing.T) {
 				},
 			},
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: InvalidBootTimeErr{OriginalErr: ErrFutureDate}},
+			expectedErr: InvalidBootTimeErr{OriginalErr: ErrFutureDate, ErrorTag: InvalidBootTime},
 		},
 		{
 			description: "No boot-time",
@@ -86,7 +98,18 @@ func TestBootTimeValidator(t *testing.T) {
 				Metadata:  map[string]string{},
 			},
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: InvalidBootTimeErr{}},
+			expectedErr: InvalidBootTimeErr{ErrorTag: MissingBootTime},
+		},
+		{
+			description: "Invalid boot-time format",
+			event: interpreter.Event{
+				Birthdate: now.Add(-1 * time.Hour).UnixNano(),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: "not a time stamp",
+				},
+			},
+			valid:       false,
+			expectedErr: InvalidBootTimeErr{ErrorTag: InvalidBootTime},
 		},
 	}
 
@@ -98,7 +121,12 @@ func TestBootTimeValidator(t *testing.T) {
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {
+				var taggedError TaggedError
+				var expectedTaggedError TaggedError
+				assert.True(errors.As(err, &taggedError))
+				assert.True(errors.As(tc.expectedErr, &expectedTaggedError))
 				assert.Contains(err.Error(), tc.expectedErr.Error())
+				assert.Equal(expectedTaggedError.Tag(), taggedError.Tag())
 			}
 		})
 	}
@@ -135,7 +163,7 @@ func TestBirthdateValidator(t *testing.T) {
 				},
 			},
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: InvalidBirthdateErr{OriginalErr: ErrPastDate}},
+			expectedErr: InvalidBirthdateErr{OriginalErr: ErrPastDate},
 		},
 		{
 			description: "Future birthdate",
@@ -146,7 +174,7 @@ func TestBirthdateValidator(t *testing.T) {
 				},
 			},
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: InvalidBirthdateErr{OriginalErr: ErrFutureDate}},
+			expectedErr: InvalidBirthdateErr{OriginalErr: ErrFutureDate},
 		},
 		{
 			description: "No birthdate",
@@ -156,7 +184,7 @@ func TestBirthdateValidator(t *testing.T) {
 				},
 			},
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: InvalidBirthdateErr{}},
+			expectedErr: InvalidBirthdateErr{},
 		},
 	}
 
@@ -227,4 +255,203 @@ func TestDestinationValidator(t *testing.T) {
 		})
 	}
 
+}
+
+func TestDeviceIDValidator(t *testing.T) {
+	val := DeviceIDValidator()
+	tests := []struct {
+		description        string
+		event              interpreter.Event
+		expectedConsistent bool
+	}{
+		{
+			description: "pass",
+			event: interpreter.Event{
+				Source:      "mac:112233445566",
+				Destination: "event:device-status/mac:112233445566/something-something",
+				Metadata: map[string]string{
+					"key": "some-value/mac:112233445566",
+				},
+			},
+			expectedConsistent: true,
+		},
+		{
+			description: "inconsistent destination",
+			event: interpreter.Event{
+				Source:      "mac:112233445566",
+				Destination: "event:device-status/mac:123/something-something",
+				Metadata: map[string]string{
+					"key": "some-value/mac:112233445566",
+				},
+			},
+			expectedConsistent: false,
+		},
+		{
+			description: "inconsistent metadata",
+			event: interpreter.Event{
+				Source:      "mac:112233445566",
+				Destination: "event:device-status/mac:112233445566/something-something",
+				Metadata: map[string]string{
+					"key": "some-value/mac:112233445566/serial:112233445566",
+				},
+			},
+			expectedConsistent: false,
+		},
+		{
+			description: "no source",
+			event: interpreter.Event{
+				Destination: "event:device-status/mac:112233445566/something-something",
+				Metadata: map[string]string{
+					"key": "some-value/mac:112233445566",
+				},
+			},
+			expectedConsistent: true,
+		},
+		{
+			description: "no destination",
+			event: interpreter.Event{
+				Source: "mac:112233445566",
+				Metadata: map[string]string{
+					"key": "some-value/mac:112233445566",
+				},
+			},
+			expectedConsistent: true,
+		},
+		{
+			description: "no id in metadata",
+			event: interpreter.Event{
+				Source:      "mac:112233445566",
+				Destination: "event:device-status/mac:112233445566/something-something",
+				Metadata: map[string]string{
+					"key": "some-value",
+				},
+			},
+			expectedConsistent: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			pass, err := val(tc.event)
+			assert.Equal(tc.expectedConsistent, pass)
+			if !tc.expectedConsistent {
+				var e TaggedError
+				assert.True(errors.Is(err, ErrInconsistentDeviceID))
+				assert.True(errors.As(err, &e))
+				assert.Equal(InconsistentDeviceID, e.Tag())
+			} else {
+				assert.Nil(err)
+			}
+		})
+	}
+}
+
+func TestDeviceIDComparison(t *testing.T) {
+	tests := []struct {
+		checkID         string
+		foundID         string
+		consistent      bool
+		expectedFoundID string
+	}{
+		{
+			checkID:         "event:device-status/serial:112233445566/something-something/123",
+			foundID:         "serial:112233445566",
+			consistent:      true,
+			expectedFoundID: "serial:112233445566",
+		},
+		{
+			checkID:         "event:device-status/mac:112233445566/something-something/123",
+			foundID:         "mac:112233445566",
+			consistent:      true,
+			expectedFoundID: "mac:112233445566",
+		},
+		{
+			checkID:         "event:device-status/uuid:112233445566/something-something/123",
+			foundID:         "uuid:112233445566",
+			consistent:      true,
+			expectedFoundID: "uuid:112233445566",
+		},
+		{
+			checkID:         "event:device-status/dns:112233445566/something-something/123",
+			foundID:         "dns:112233445566",
+			consistent:      true,
+			expectedFoundID: "dns:112233445566",
+		},
+		{
+			checkID:         "event:device-status/mac:112233445566/something-something/mac:112233445566/123",
+			foundID:         "mac:112233445566",
+			consistent:      true,
+			expectedFoundID: "mac:112233445566",
+		},
+		{
+			checkID:         "event:device-status/mac:112233445566/something-something/mac:123/123",
+			foundID:         "mac:112233445566",
+			consistent:      false,
+			expectedFoundID: "mac:112233445566",
+		},
+		{
+			checkID:         "mac:112233445566",
+			foundID:         "mac:112233445566",
+			consistent:      true,
+			expectedFoundID: "mac:112233445566",
+		},
+		{
+			checkID:         "/mac:112233445566/",
+			foundID:         "mac:112233445566",
+			consistent:      true,
+			expectedFoundID: "mac:112233445566",
+		},
+		{
+			checkID:         "dns:112233445566",
+			foundID:         "dns:112233445566",
+			consistent:      true,
+			expectedFoundID: "dns:112233445566",
+		},
+		{
+			checkID:         "serial:112233445566",
+			foundID:         "serial:112233445566",
+			consistent:      true,
+			expectedFoundID: "serial:112233445566",
+		},
+		{
+			checkID:         "uuid:112233445566",
+			foundID:         "uuid:112233445566",
+			consistent:      true,
+			expectedFoundID: "uuid:112233445566",
+		},
+		{
+			checkID:         "mac:112233445566",
+			foundID:         "",
+			consistent:      true,
+			expectedFoundID: "mac:112233445566",
+		},
+		{
+			checkID:         "uuid:112233445566",
+			foundID:         "mac:112233445566",
+			consistent:      false,
+			expectedFoundID: "mac:112233445566",
+		},
+		{
+			checkID:         "mac:112233445566",
+			foundID:         "mac:123",
+			consistent:      false,
+			expectedFoundID: "mac:123",
+		},
+		{
+			checkID:         "not-an-id",
+			foundID:         "mac:123",
+			consistent:      true,
+			expectedFoundID: "mac:123",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.checkID, func(t *testing.T) {
+			assert := assert.New(t)
+			consistent, id := deviceIDComparison(tc.checkID, tc.foundID)
+			assert.Equal(tc.consistent, consistent)
+			assert.Equal(tc.expectedFoundID, id)
+		})
+	}
 }

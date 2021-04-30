@@ -19,6 +19,7 @@ package validation
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -26,8 +27,10 @@ import (
 )
 
 var (
-	ErrInvalidEventType = errors.New("event type doesn't match")
-	ErrNonEvent         = errors.New("not an event")
+	ErrInvalidEventType     = errors.New("event type doesn't match")
+	ErrNonEvent             = errors.New("not an event")
+	ErrInconsistentDeviceID = errors.New("inconsistent device id")
+	ErrInvalidBootTime      = errors.New("boot-time is past the cut-off year")
 )
 
 // Validator validates an event, returning false and an error if the event is not valid
@@ -62,22 +65,46 @@ func (v Validators) Valid(e interpreter.Event) (bool, error) {
 // BootTimeValidator returns a ValidatorFunc that checks if an
 // Event's boot-time is valid, meaning parsable, greater than 0, and within the
 // bounds deemed valid by the TimeValidation parameter.
-func BootTimeValidator(tv TimeValidation) ValidatorFunc {
+func BootTimeValidator(tv TimeValidation, year int) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		bootTime, err := e.BootTime()
 		if err != nil || bootTime <= 0 {
-			return false, InvalidEventErr{
-				OriginalErr: InvalidBootTimeErr{
-					OriginalErr: err,
-				},
+			var tag Tag
+			if errors.Is(err, interpreter.ErrBootTimeNotFound) {
+				tag = MissingBootTime
+			} else {
+				tag = InvalidBootTime
+			}
+
+			return false, InvalidBootTimeErr{
+				OriginalErr: err,
+				ErrorTag:    tag,
+			}
+		}
+
+		// check that boot-time is after the same day in the desired year
+		now := time.Now()
+		eventTime := time.Unix(bootTime, 0)
+		compareDate := time.Date(year, now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
+		if eventTime.Before(compareDate) {
+			return false, InvalidBootTimeErr{
+				OriginalErr: fmt.Errorf("%w: %d", ErrInvalidBootTime, year),
+				ErrorTag:    InvalidBootTime,
 			}
 		}
 
 		if valid, err := tv.Valid(time.Unix(bootTime, 0)); !valid {
-			return false, InvalidEventErr{
-				OriginalErr: InvalidBootTimeErr{
-					OriginalErr: err,
-				},
+			var tag Tag
+			if errors.Is(err, ErrPastDate) {
+				tag = OldBootTime
+			} else {
+				tag = InvalidBootTime
+			}
+
+			return false, InvalidBootTimeErr{
+				OriginalErr: err,
+				ErrorTag:    tag,
 			}
 		}
 
@@ -92,16 +119,12 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		birthdate := e.Birthdate
 		if birthdate <= 0 {
-			return false, InvalidEventErr{
-				OriginalErr: InvalidBirthdateErr{},
-			}
+			return false, InvalidBirthdateErr{}
 		}
 
 		if valid, err := tv.Valid(time.Unix(0, e.Birthdate)); !valid {
-			return false, InvalidEventErr{
-				OriginalErr: InvalidBirthdateErr{
-					OriginalErr: err,
-				},
+			return false, InvalidBirthdateErr{
+				OriginalErr: err,
 			}
 		}
 
@@ -114,23 +137,61 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		if !interpreter.EventRegex.MatchString(e.Destination) {
-			return false, InvalidEventErr{
-				OriginalErr: InvalidDestinationErr{
-					OriginalErr: ErrNonEvent,
-					ErrLabel:    nonEventReason,
-				},
+			return false, InvalidDestinationErr{
+				OriginalErr: ErrNonEvent,
+				ErrLabel:    nonEventReason,
 			}
+
 		}
 
 		if !regex.MatchString(e.Destination) {
-			return false, InvalidEventErr{
-				OriginalErr: InvalidDestinationErr{
-					OriginalErr: ErrInvalidEventType,
-					ErrLabel:    eventMismatchReason,
-				},
+			return false, InvalidDestinationErr{
+				OriginalErr: ErrInvalidEventType,
+				ErrLabel:    eventMismatchReason,
 			}
 		}
 
 		return true, nil
 	}
+}
+
+// DeviceIDValidator returns a ValidatorFunc that validates that the all occurences
+// of the device id in an event's source, destination, or metadata are consistent.
+func DeviceIDValidator() ValidatorFunc {
+	return func(e interpreter.Event) (bool, error) {
+		var id string
+		var consistent bool
+
+		if consistent, id = deviceIDComparison(e.Source, id); !consistent {
+			return false, InvalidEventErr{OriginalErr: ErrInconsistentDeviceID, ErrorTag: InconsistentDeviceID}
+		}
+
+		if consistent, id = deviceIDComparison(e.Destination, id); !consistent {
+			return false, InvalidEventErr{OriginalErr: ErrInconsistentDeviceID, ErrorTag: InconsistentDeviceID}
+		}
+
+		for _, val := range e.Metadata {
+			if consistent, id = deviceIDComparison(val, id); !consistent {
+				return false, InvalidEventErr{OriginalErr: ErrInconsistentDeviceID, ErrorTag: InconsistentDeviceID}
+			}
+		}
+
+		return true, nil
+	}
+}
+
+func deviceIDComparison(checkID string, foundID string) (bool, string) {
+	if matches := interpreter.DeviceIDRegex.FindAllStringSubmatch(checkID, -1); len(matches) > 0 {
+		if len(foundID) == 0 {
+			foundID = matches[0][0]
+		}
+
+		for _, m := range matches {
+			if foundID != m[0] {
+				return false, foundID
+			}
+		}
+	}
+
+	return true, foundID
 }
