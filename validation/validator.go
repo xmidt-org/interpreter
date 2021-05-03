@@ -69,19 +69,9 @@ func (v Validators) Valid(e interpreter.Event) (bool, error) {
 // bounds deemed valid by the TimeValidation parameter.
 func BootTimeValidator(tv TimeValidation, lastValidYear int) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
-		bootTime, err := e.BootTime()
-		if err != nil || bootTime <= 0 {
-			var tag Tag
-			if errors.Is(err, interpreter.ErrBootTimeNotFound) {
-				tag = MissingBootTime
-			} else {
-				tag = InvalidBootTime
-			}
-
-			return false, InvalidBootTimeErr{
-				OriginalErr: err,
-				ErrorTag:    tag,
-			}
+		bootTime, err := getBootTime(e)
+		if err != nil {
+			return false, err
 		}
 
 		// check that boot-time is after the same day in the desired year
@@ -182,31 +172,18 @@ func ConsistentDeviceIDValidator() ValidatorFunc {
 	}
 }
 
-func deviceIDComparison(checkID string, foundID string) (bool, string) {
-	if matches := interpreter.DeviceIDRegex.FindAllStringSubmatch(checkID, -1); len(matches) > 0 {
-		if len(foundID) == 0 {
-			foundID = matches[0][0]
-		}
-
-		for _, m := range matches {
-			if foundID != m[0] {
-				return false, foundID
-			}
-		}
-	}
-
-	return true, foundID
-}
-
-// DestinationTimestampValidator returns a ValidatorFunc that validates that the all unix timestamps
-// in the destination of an event are at least a certain time duration from the boot-time of the event.
-func DestinationTimestampValidator(minDuration time.Duration) ValidatorFunc {
+// BootLengthValidator returns a ValidatorFunc that validates that the all unix timestamps
+// in the destination of an event are at least a certain time duration from the boot-time of the event,
+// ensuring that the boot cycle is not suspiciously fast. Note: this validator depends on the boot-time
+// being present in an event's metadata. If it isn't, the validator will return true and an error, which
+// deems the timestamps as valid, even if they may not be, because it is impossible to determine validity without a boot-time.
+func BootLengthValidator(minDuration time.Duration) ValidatorFunc {
 	timestampRegex := regexp.MustCompile(`/(?P<content>[^/]+)`)
 	index := timestampRegex.SubexpIndex("content")
 	return func(e interpreter.Event) (bool, error) {
-		bootTimeInt, err := e.BootTime()
-		if err != nil || bootTimeInt <= 0 {
-			return true, nil
+		bootTimeInt, err := getBootTime(e)
+		if err != nil {
+			return true, err
 		}
 
 		bootTime := time.Unix(bootTimeInt, 0)
@@ -223,4 +200,41 @@ func DestinationTimestampValidator(minDuration time.Duration) ValidatorFunc {
 
 		return true, nil
 	}
+}
+
+func deviceIDComparison(checkID string, foundID string) (bool, string) {
+	if matches := interpreter.DeviceIDRegex.FindAllStringSubmatch(checkID, -1); len(matches) > 0 {
+		if len(foundID) == 0 {
+			foundID = matches[0][0]
+		}
+
+		for _, m := range matches {
+			if foundID != m[0] {
+				return false, foundID
+			}
+		}
+	}
+
+	return true, foundID
+}
+
+// helper function for getting boot-time and returning the proper error if there is trouble
+// getting it.
+func getBootTime(e interpreter.Event) (int64, error) {
+	bootTimeInt, err := e.BootTime()
+	if err != nil || bootTimeInt <= 0 {
+		var tag Tag
+		if errors.Is(err, interpreter.ErrBootTimeNotFound) {
+			tag = MissingBootTime
+		} else {
+			tag = InvalidBootTime
+		}
+
+		return bootTimeInt, InvalidBootTimeErr{
+			OriginalErr: err,
+			ErrorTag:    tag,
+		}
+	}
+
+	return bootTimeInt, nil
 }

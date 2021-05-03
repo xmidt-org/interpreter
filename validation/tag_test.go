@@ -12,8 +12,7 @@ func TestString(t *testing.T) {
 		assert.Equal(t, tagToString[tag], tag.String())
 	}
 
-	var nonExistentTag Tag
-	nonExistentTag = 1000
+	var nonExistentTag Tag = 1000
 	assert.Equal(t, "unknown", nonExistentTag.String())
 }
 func TestParseTag(t *testing.T) {
