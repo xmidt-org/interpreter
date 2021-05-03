@@ -258,7 +258,7 @@ func TestDestinationValidator(t *testing.T) {
 }
 
 func TestDeviceIDValidator(t *testing.T) {
-	val := DeviceIDValidator()
+	val := ConsistentDeviceIDValidator()
 	tests := []struct {
 		description        string
 		event              interpreter.Event
@@ -274,6 +274,17 @@ func TestDeviceIDValidator(t *testing.T) {
 				},
 			},
 			expectedConsistent: true,
+		},
+		{
+			description: "inconsistent source",
+			event: interpreter.Event{
+				Source:      "mac:112233445566/serial:12345678",
+				Destination: "event:device-status/mac:112233445566/something-something",
+				Metadata: map[string]string{
+					"key": "some-value/mac:112233445566",
+				},
+			},
+			expectedConsistent: false,
 		},
 		{
 			description: "inconsistent destination",
@@ -452,6 +463,110 @@ func TestDeviceIDComparison(t *testing.T) {
 			consistent, id := deviceIDComparison(tc.checkID, tc.foundID)
 			assert.Equal(tc.consistent, consistent)
 			assert.Equal(tc.expectedFoundID, id)
+		})
+	}
+}
+
+func TestDestinationTimestampValidator(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+	tests := []struct {
+		description string
+		event       interpreter.Event
+		duration    time.Duration
+		valid       bool
+	}{
+		{
+			description: "valid with timestamp",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/serial:112233445566/%d", now.Add(2*time.Minute).Unix()),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration: 10 * time.Second,
+			valid:    true,
+		},
+		{
+			description: "valid with multiple timestamps",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/serial:112233445566/%d/something-something/%d/%d", now.Add(2*time.Minute).Unix(), now.Add(3*time.Minute).Unix(), now.Add(time.Minute).Unix()),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration: 10 * time.Second,
+			valid:    true,
+		},
+		{
+			description: "valid with no timestamps",
+			event: interpreter.Event{
+				Destination: "event:device-status/serial:112233445566/",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration: 10 * time.Second,
+			valid:    true,
+		},
+		{
+			description: "invalid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/serial:112233445566/%d", now.Add(5*time.Second).Unix()),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration: 10 * time.Second,
+			valid:    false,
+		},
+		{
+			description: "past timestamp",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/serial:112233445566/%d", now.Add(-5*time.Second).Unix()),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration: 10 * time.Second,
+			valid:    true,
+		},
+		{
+			description: "regular int",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/serial:112233445566/123"),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration: 10 * time.Second,
+			valid:    true,
+		},
+		{
+			description: "duration",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/serial:112233445566/2s"),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration: 10 * time.Second,
+			valid:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			val := DestinationTimestampValidator(tc.duration)
+			valid, err := val(tc.event)
+			assert.Equal(tc.valid, valid)
+			if !tc.valid {
+				var taggedError TaggedError
+				assert.True(errors.Is(err, ErrFastBoot))
+				assert.True(errors.As(err, &taggedError))
+				assert.Equal(FastBoot, taggedError.Tag())
+			}
 		})
 	}
 }

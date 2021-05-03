@@ -30,7 +30,7 @@ var (
 		MissingBootTime:      "missing_boot_time",
 		OldBootTime:          "old_boot_time",
 		InvalidBootTime:      "invalid_boot_time",
-		FastBoot:             "fast_boot",
+		FastBoot:             "suspiciously_fast_boot",
 		Unknown:              "unknown",
 	}
 
@@ -40,7 +40,7 @@ var (
 		"missing_boot_time":      MissingBootTime,
 		"old_boot_time":          OldBootTime,
 		"invalid_boot_time":      InvalidBootTime,
-		"fast_boot":              FastBoot,
+		"suspiciously_fast_boot": FastBoot,
 		"unknown":                Unknown,
 	}
 )

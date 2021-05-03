@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/xmidt-org/interpreter"
@@ -31,6 +32,7 @@ var (
 	ErrNonEvent             = errors.New("not an event")
 	ErrInconsistentDeviceID = errors.New("inconsistent device id")
 	ErrInvalidBootTime      = errors.New("boot-time is past the cut-off year")
+	ErrFastBoot             = errors.New("fast booting")
 )
 
 // Validator validates an event, returning false and an error if the event is not valid
@@ -65,7 +67,7 @@ func (v Validators) Valid(e interpreter.Event) (bool, error) {
 // BootTimeValidator returns a ValidatorFunc that checks if an
 // Event's boot-time is valid, meaning parsable, greater than 0, and within the
 // bounds deemed valid by the TimeValidation parameter.
-func BootTimeValidator(tv TimeValidation, year int) ValidatorFunc {
+func BootTimeValidator(tv TimeValidation, lastValidYear int) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		bootTime, err := e.BootTime()
 		if err != nil || bootTime <= 0 {
@@ -85,11 +87,11 @@ func BootTimeValidator(tv TimeValidation, year int) ValidatorFunc {
 		// check that boot-time is after the same day in the desired year
 		now := time.Now()
 		eventTime := time.Unix(bootTime, 0)
-		compareDate := time.Date(year, now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+		compareDate := time.Date(lastValidYear, now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
 		if eventTime.Before(compareDate) {
 			return false, InvalidBootTimeErr{
-				OriginalErr: fmt.Errorf("%w: %d", ErrInvalidBootTime, year),
+				OriginalErr: fmt.Errorf("%w: %d", ErrInvalidBootTime, lastValidYear),
 				ErrorTag:    InvalidBootTime,
 			}
 		}
@@ -155,9 +157,9 @@ func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 	}
 }
 
-// DeviceIDValidator returns a ValidatorFunc that validates that the all occurences
+// ConsistentDeviceIDValidator returns a ValidatorFunc that validates that the all occurrences
 // of the device id in an event's source, destination, or metadata are consistent.
-func DeviceIDValidator() ValidatorFunc {
+func ConsistentDeviceIDValidator() ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		var id string
 		var consistent bool
@@ -194,4 +196,31 @@ func deviceIDComparison(checkID string, foundID string) (bool, string) {
 	}
 
 	return true, foundID
+}
+
+// DestinationTimestampValidator returns a ValidatorFunc that validates that the all unix timestamps
+// in the destination of an event are at least a certain time duration from the boot-time of the event.
+func DestinationTimestampValidator(minDuration time.Duration) ValidatorFunc {
+	timestampRegex := regexp.MustCompile(`/(?P<content>[^/]+)`)
+	index := timestampRegex.SubexpIndex("content")
+	return func(e interpreter.Event) (bool, error) {
+		bootTimeInt, err := e.BootTime()
+		if err != nil || bootTimeInt <= 0 {
+			return true, nil
+		}
+
+		bootTime := time.Unix(bootTimeInt, 0)
+
+		matches := timestampRegex.FindAllStringSubmatch(e.Destination, -1)
+		for _, match := range matches {
+			if val, err := strconv.ParseInt(match[index], 10, 64); err == nil {
+				timeStamp := time.Unix(val, 0)
+				if bootTime.Before(timeStamp) && timeStamp.Sub(bootTime) < minDuration {
+					return false, InvalidEventErr{OriginalErr: ErrFastBoot, ErrorTag: FastBoot}
+				}
+			}
+		}
+
+		return true, nil
+	}
 }
