@@ -264,6 +264,7 @@ func TestDeviceIDValidator(t *testing.T) {
 		description        string
 		event              interpreter.Event
 		expectedConsistent bool
+		expectedIDs        []string
 	}{
 		{
 			description: "pass",
@@ -285,6 +286,7 @@ func TestDeviceIDValidator(t *testing.T) {
 					"key": "some-value/mac:112233445566",
 				},
 			},
+			expectedIDs:        []string{"mac:112233445566", "serial:12345678", "mac:112233445566", "mac:112233445566"},
 			expectedConsistent: false,
 		},
 		{
@@ -296,6 +298,7 @@ func TestDeviceIDValidator(t *testing.T) {
 					"key": "some-value/mac:112233445566",
 				},
 			},
+			expectedIDs:        []string{"mac:112233445566", "mac:123", "mac:112233445566"},
 			expectedConsistent: false,
 		},
 		{
@@ -307,6 +310,7 @@ func TestDeviceIDValidator(t *testing.T) {
 					"key": "some-value/mac:112233445566/serial:112233445566",
 				},
 			},
+			expectedIDs:        []string{"mac:112233445566", "mac:112233445566", "mac:112233445566", "serial:112233445566"},
 			expectedConsistent: false,
 		},
 		{
@@ -348,9 +352,10 @@ func TestDeviceIDValidator(t *testing.T) {
 			pass, err := val(tc.event)
 			assert.Equal(tc.expectedConsistent, pass)
 			if !tc.expectedConsistent {
-				var e TaggedError
+				var e InconsistentIDErr
 				assert.True(errors.As(err, &e))
 				assert.Equal(InconsistentDeviceID, e.Tag())
+				assert.Equal(tc.expectedIDs, e.IDs)
 			} else {
 				assert.Nil(err)
 			}

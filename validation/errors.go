@@ -123,7 +123,7 @@ type InconsistentIDErr struct {
 }
 
 func (e InconsistentIDErr) Error() string {
-	return fmt.Sprintf("inconsistent device id. IDs seen: %v", e.IDs)
+	return "inconsistent device id"
 }
 
 func (e InconsistentIDErr) Tag() Tag {
@@ -142,7 +142,7 @@ func (e BootDurationErr) Error() string {
 		return fmt.Sprintf("boot duration error: %v", e.OriginalErr)
 	}
 
-	return fmt.Sprintf("boot duration error")
+	return "boot duration error"
 }
 
 func (e BootDurationErr) Tag() Tag {
