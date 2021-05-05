@@ -39,9 +39,10 @@ func TestBootTimeValidator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	currTime := func() time.Time { return now }
-	validation := TimeValidator{ValidFrom: -2 * time.Hour, ValidTo: time.Hour, Current: currTime}
 	year := 2015
-	validator := BootTimeValidator(validation, year)
+	timeValidation := TimeValidator{ValidFrom: -2 * time.Hour, ValidTo: time.Hour, Current: currTime}
+	yearValidation := YearValidator{Year: year, Current: currTime}
+	validator := BootTimeValidator(timeValidation, yearValidation)
 	tests := []struct {
 		description string
 		event       interpreter.Event
@@ -78,7 +79,7 @@ func TestBootTimeValidator(t *testing.T) {
 				},
 			},
 			valid:       false,
-			expectedErr: InvalidBootTimeErr{OriginalErr: ErrInvalidBootTime, ErrorTag: InvalidBootTime},
+			expectedErr: InvalidBootTimeErr{OriginalErr: ErrInvalidYear, ErrorTag: InvalidBootTime},
 		},
 		{
 			description: "Future boot-time",
@@ -348,7 +349,6 @@ func TestDeviceIDValidator(t *testing.T) {
 			assert.Equal(tc.expectedConsistent, pass)
 			if !tc.expectedConsistent {
 				var e TaggedError
-				assert.True(errors.Is(err, ErrInconsistentDeviceID))
 				assert.True(errors.As(err, &e))
 				assert.Equal(InconsistentDeviceID, e.Tag())
 			} else {
@@ -422,7 +422,7 @@ func TestDestinationTimestampValidator(t *testing.T) {
 			},
 			duration:    10 * time.Second,
 			valid:       false,
-			expectedErr: InvalidEventErr{OriginalErr: ErrFastBoot, ErrorTag: FastBoot},
+			expectedErr: BootDurationErr{OriginalErr: ErrFastBoot, ErrorTag: FastBoot},
 			expectedTag: FastBoot,
 		},
 		{
@@ -463,7 +463,7 @@ func TestDestinationTimestampValidator(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			val := BootLengthValidator(tc.duration)
+			val := BootDurationValidator(tc.duration)
 			valid, err := val(tc.event)
 			assert.Equal(tc.valid, valid)
 			if tc.expectedErr != nil {
@@ -482,90 +482,105 @@ func TestDeviceIDComparison(t *testing.T) {
 		foundID         string
 		consistent      bool
 		expectedFoundID string
+		expectedIDs     []string
 	}{
 		{
 			checkID:         "event:device-status/serial:112233445566/something-something/123",
 			foundID:         "serial:112233445566",
 			consistent:      true,
 			expectedFoundID: "serial:112233445566",
+			expectedIDs:     []string{"serial:112233445566"},
 		},
 		{
 			checkID:         "event:device-status/mac:112233445566/something-something/123",
 			foundID:         "mac:112233445566",
 			consistent:      true,
 			expectedFoundID: "mac:112233445566",
+			expectedIDs:     []string{"mac:112233445566"},
 		},
 		{
 			checkID:         "event:device-status/uuid:112233445566/something-something/123",
 			foundID:         "uuid:112233445566",
 			consistent:      true,
 			expectedFoundID: "uuid:112233445566",
+			expectedIDs:     []string{"uuid:112233445566"},
 		},
 		{
 			checkID:         "event:device-status/dns:112233445566/something-something/123",
 			foundID:         "dns:112233445566",
 			consistent:      true,
 			expectedFoundID: "dns:112233445566",
+			expectedIDs:     []string{"dns:112233445566"},
 		},
 		{
 			checkID:         "event:device-status/mac:112233445566/something-something/mac:112233445566/123",
 			foundID:         "mac:112233445566",
 			consistent:      true,
 			expectedFoundID: "mac:112233445566",
+			expectedIDs:     []string{"mac:112233445566", "mac:112233445566"},
 		},
 		{
 			checkID:         "event:device-status/mac:112233445566/something-something/mac:123/123",
 			foundID:         "mac:112233445566",
 			consistent:      false,
 			expectedFoundID: "mac:112233445566",
+			expectedIDs:     []string{"mac:112233445566", "mac:123"},
 		},
 		{
 			checkID:         "mac:112233445566",
 			foundID:         "mac:112233445566",
 			consistent:      true,
 			expectedFoundID: "mac:112233445566",
+			expectedIDs:     []string{"mac:112233445566"},
 		},
 		{
 			checkID:         "/mac:112233445566/",
 			foundID:         "mac:112233445566",
 			consistent:      true,
 			expectedFoundID: "mac:112233445566",
+			expectedIDs:     []string{"mac:112233445566"},
 		},
 		{
 			checkID:         "dns:112233445566",
 			foundID:         "dns:112233445566",
 			consistent:      true,
 			expectedFoundID: "dns:112233445566",
+			expectedIDs:     []string{"dns:112233445566"},
 		},
 		{
 			checkID:         "serial:112233445566",
 			foundID:         "serial:112233445566",
 			consistent:      true,
 			expectedFoundID: "serial:112233445566",
+			expectedIDs:     []string{"serial:112233445566"},
 		},
 		{
 			checkID:         "uuid:112233445566",
 			foundID:         "uuid:112233445566",
 			consistent:      true,
 			expectedFoundID: "uuid:112233445566",
+			expectedIDs:     []string{"uuid:112233445566"},
 		},
 		{
 			checkID:         "mac:112233445566",
 			foundID:         "",
 			consistent:      true,
 			expectedFoundID: "mac:112233445566",
+			expectedIDs:     []string{"mac:112233445566"},
 		},
 		{
 			checkID:         "uuid:112233445566",
 			foundID:         "mac:112233445566",
 			consistent:      false,
 			expectedFoundID: "mac:112233445566",
+			expectedIDs:     []string{"uuid:112233445566"},
 		},
 		{
 			checkID:         "mac:112233445566",
 			foundID:         "mac:123",
 			consistent:      false,
 			expectedFoundID: "mac:123",
+			expectedIDs:     []string{"mac:112233445566"},
 		},
 		{
 			checkID:         "not-an-id",
@@ -578,9 +593,11 @@ func TestDeviceIDComparison(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.checkID, func(t *testing.T) {
 			assert := assert.New(t)
-			consistent, id := deviceIDComparison(tc.checkID, tc.foundID)
+			var ids []string
+			consistent, id, ids := deviceIDComparison(tc.checkID, tc.foundID, ids)
 			assert.Equal(tc.consistent, consistent)
 			assert.Equal(tc.expectedFoundID, id)
+			assert.Equal(tc.expectedIDs, ids)
 		})
 	}
 }

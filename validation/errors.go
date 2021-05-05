@@ -118,6 +118,37 @@ func (e InvalidBirthdateErr) ErrorLabel() string {
 	return invalidBirthdateReason
 }
 
+type InconsistentIDErr struct {
+	IDs []string
+}
+
+func (e InconsistentIDErr) Error() string {
+	return fmt.Sprintf("inconsistent device id. IDs seen: %v", e.IDs)
+}
+
+func (e InconsistentIDErr) Tag() Tag {
+	return InconsistentDeviceID
+}
+
+type BootDurationErr struct {
+	OriginalErr error
+	ErrorTag    Tag
+	Destination string
+	Timestamps  []int64
+}
+
+func (e BootDurationErr) Error() string {
+	if e.OriginalErr != nil {
+		return fmt.Sprintf("boot duration error: %v", e.OriginalErr)
+	}
+
+	return fmt.Sprintf("boot duration error")
+}
+
+func (e BootDurationErr) Tag() Tag {
+	return e.ErrorTag
+}
+
 type InvalidDestinationErr struct {
 	OriginalErr error
 	ErrLabel    string

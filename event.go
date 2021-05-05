@@ -43,7 +43,7 @@ var (
 	// EventRegex is the regex that an event's destination must match in order to parse the device id properly.
 	EventRegex = regexp.MustCompile(`^(?P<event>[^/]+)/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^/]+))/(?P<type>[^/\s]+)`)
 
-	// DeviceIDRegex is used to parse a device id from anywhere
+	// DeviceIDRegex is used to parse a device id from anywhere.
 	DeviceIDRegex = regexp.MustCompile(`(?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^/]+)`)
 )
 

@@ -19,7 +19,6 @@ package validation
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"strconv"
 	"time"
@@ -28,11 +27,9 @@ import (
 )
 
 var (
-	ErrInvalidEventType     = errors.New("event type doesn't match")
-	ErrNonEvent             = errors.New("not an event")
-	ErrInconsistentDeviceID = errors.New("inconsistent device id")
-	ErrInvalidBootTime      = errors.New("boot-time is past the cut-off year")
-	ErrFastBoot             = errors.New("fast booting")
+	ErrInvalidEventType = errors.New("event type doesn't match")
+	ErrNonEvent         = errors.New("not an event")
+	ErrFastBoot         = errors.New("fast booting")
 )
 
 // Validator validates an event, returning false and an error if the event is not valid
@@ -65,28 +62,23 @@ func (v Validators) Valid(e interpreter.Event) (bool, error) {
 }
 
 // BootTimeValidator returns a ValidatorFunc that checks if an
-// Event's boot-time is valid, meaning parsable, greater than 0, and within the
-// bounds deemed valid by the TimeValidation parameter.
-func BootTimeValidator(tv TimeValidation, lastValidYear int) ValidatorFunc {
+// Event's boot-time is valid (meaning parsable), greater than 0, and within the
+// bounds deemed valid by the TimeValidation parameters.
+func BootTimeValidator(tv TimeValidation, yearValidator TimeValidation) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		bootTime, err := getBootTime(e)
 		if err != nil {
 			return false, err
 		}
 
-		// check that boot-time is after the same day in the desired year
-		now := time.Now()
-		eventTime := time.Unix(bootTime, 0)
-		compareDate := time.Date(lastValidYear, now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
-
-		if eventTime.Before(compareDate) {
+		if valid, err := yearValidator.Valid(bootTime); !valid {
 			return false, InvalidBootTimeErr{
-				OriginalErr: fmt.Errorf("%w: %d", ErrInvalidBootTime, lastValidYear),
+				OriginalErr: err,
 				ErrorTag:    InvalidBootTime,
 			}
 		}
 
-		if valid, err := tv.Valid(time.Unix(bootTime, 0)); !valid {
+		if valid, err := tv.Valid(bootTime); !valid {
 			var tag Tag
 			if errors.Is(err, ErrPastDate) {
 				tag = OldBootTime
@@ -151,76 +143,87 @@ func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 // of the device id in an event's source, destination, or metadata are consistent.
 func ConsistentDeviceIDValidator() ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
-		var id string
-		var consistent bool
+		consistent := true
+		var firstID string
+		var ids []string
 
-		if consistent, id = deviceIDComparison(e.Source, id); !consistent {
-			return false, InvalidEventErr{OriginalErr: ErrInconsistentDeviceID, ErrorTag: InconsistentDeviceID}
-		}
-
-		if consistent, id = deviceIDComparison(e.Destination, id); !consistent {
-			return false, InvalidEventErr{OriginalErr: ErrInconsistentDeviceID, ErrorTag: InconsistentDeviceID}
-		}
+		consistent, firstID, ids = consistentIDHelper(e.Source, firstID, consistent, ids)
+		consistent, firstID, ids = consistentIDHelper(e.Destination, firstID, consistent, ids)
 
 		for _, val := range e.Metadata {
-			if consistent, id = deviceIDComparison(val, id); !consistent {
-				return false, InvalidEventErr{OriginalErr: ErrInconsistentDeviceID, ErrorTag: InconsistentDeviceID}
-			}
+			consistent, firstID, ids = consistentIDHelper(val, firstID, consistent, ids)
+		}
+
+		if !consistent {
+			return false, InconsistentIDErr{IDs: ids}
 		}
 
 		return true, nil
 	}
 }
 
-// BootLengthValidator returns a ValidatorFunc that validates that the all unix timestamps
+// BootDurationValidator returns a ValidatorFunc that validates that all unix timestamps
 // in the destination of an event are at least a certain time duration from the boot-time of the event,
 // ensuring that the boot cycle is not suspiciously fast. Note: this validator depends on the boot-time
 // being present in an event's metadata. If it isn't, the validator will return true and an error, which
 // deems the timestamps as valid, even if they may not be, because it is impossible to determine validity without a boot-time.
-func BootLengthValidator(minDuration time.Duration) ValidatorFunc {
+func BootDurationValidator(minDuration time.Duration) ValidatorFunc {
 	timestampRegex := regexp.MustCompile(`/(?P<content>[^/]+)`)
 	index := timestampRegex.SubexpIndex("content")
 	return func(e interpreter.Event) (bool, error) {
-		bootTimeInt, err := getBootTime(e)
+		bootTime, err := getBootTime(e)
 		if err != nil {
 			return true, err
 		}
 
-		bootTime := time.Unix(bootTimeInt, 0)
-
 		matches := timestampRegex.FindAllStringSubmatch(e.Destination, -1)
+		var invalidTimestamps []int64
+		valid := true
 		for _, match := range matches {
 			if val, err := strconv.ParseInt(match[index], 10, 64); err == nil {
 				timeStamp := time.Unix(val, 0)
 				if bootTime.Before(timeStamp) && timeStamp.Sub(bootTime) < minDuration {
-					return false, InvalidEventErr{OriginalErr: ErrFastBoot, ErrorTag: FastBoot}
+					valid = false
+					invalidTimestamps = append(invalidTimestamps, val)
 				}
 			}
 		}
 
+		if !valid {
+			return false, BootDurationErr{OriginalErr: ErrFastBoot, Destination: e.Destination, Timestamps: invalidTimestamps, ErrorTag: FastBoot}
+		}
 		return true, nil
 	}
 }
 
-func deviceIDComparison(checkID string, foundID string) (bool, string) {
-	if matches := interpreter.DeviceIDRegex.FindAllStringSubmatch(checkID, -1); len(matches) > 0 {
-		if len(foundID) == 0 {
-			foundID = matches[0][0]
+func consistentIDHelper(strToCheck string, compareID string, overallConsistent bool, allIDs []string) (bool, string, []string) {
+	consistent, foundID, ids := deviceIDComparison(strToCheck, compareID, allIDs)
+
+	allConsistent := consistent && overallConsistent
+	return allConsistent, foundID, ids
+}
+
+func deviceIDComparison(strToCheck string, compareID string, ids []string) (bool, string, []string) {
+	consistent := true
+	if matches := interpreter.DeviceIDRegex.FindAllStringSubmatch(strToCheck, -1); len(matches) > 0 {
+		if len(compareID) == 0 {
+			compareID = matches[0][0]
 		}
 
 		for _, m := range matches {
-			if foundID != m[0] {
-				return false, foundID
+			ids = append(ids, m[0])
+			if compareID != m[0] {
+				consistent = false
 			}
 		}
 	}
 
-	return true, foundID
+	return consistent, compareID, ids
 }
 
 // helper function for getting boot-time and returning the proper error if there is trouble
 // getting it.
-func getBootTime(e interpreter.Event) (int64, error) {
+func getBootTime(e interpreter.Event) (time.Time, error) {
 	bootTimeInt, err := e.BootTime()
 	if err != nil || bootTimeInt <= 0 {
 		var tag Tag
@@ -230,11 +233,11 @@ func getBootTime(e interpreter.Event) (int64, error) {
 			tag = InvalidBootTime
 		}
 
-		return bootTimeInt, InvalidBootTimeErr{
+		return time.Time{}, InvalidBootTimeErr{
 			OriginalErr: err,
 			ErrorTag:    tag,
 		}
 	}
 
-	return bootTimeInt, nil
+	return time.Unix(bootTimeInt, 0), nil
 }
