@@ -286,7 +286,7 @@ func TestDeviceIDValidator(t *testing.T) {
 					"key": "some-value/mac:112233445566",
 				},
 			},
-			expectedIDs:        []string{"mac:112233445566", "serial:12345678", "mac:112233445566", "mac:112233445566"},
+			expectedIDs:        []string{"mac:112233445566", "serial:12345678"},
 			expectedConsistent: false,
 		},
 		{
@@ -298,7 +298,7 @@ func TestDeviceIDValidator(t *testing.T) {
 					"key": "some-value/mac:112233445566",
 				},
 			},
-			expectedIDs:        []string{"mac:112233445566", "mac:123", "mac:112233445566"},
+			expectedIDs:        []string{"mac:112233445566", "mac:123"},
 			expectedConsistent: false,
 		},
 		{
@@ -310,7 +310,7 @@ func TestDeviceIDValidator(t *testing.T) {
 					"key": "some-value/mac:112233445566/serial:112233445566",
 				},
 			},
-			expectedIDs:        []string{"mac:112233445566", "mac:112233445566", "mac:112233445566", "serial:112233445566"},
+			expectedIDs:        []string{"mac:112233445566", "serial:112233445566"},
 			expectedConsistent: false,
 		},
 		{
@@ -355,7 +355,7 @@ func TestDeviceIDValidator(t *testing.T) {
 				var e InconsistentIDErr
 				assert.True(errors.As(err, &e))
 				assert.Equal(InconsistentDeviceID, e.Tag())
-				assert.Equal(tc.expectedIDs, e.IDs)
+				assert.ElementsMatch(tc.expectedIDs, e.IDs)
 			} else {
 				assert.Nil(err)
 			}
@@ -598,11 +598,13 @@ func TestDeviceIDComparison(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.checkID, func(t *testing.T) {
 			assert := assert.New(t)
-			var ids []string
+			ids := make(map[string]bool)
 			consistent, id, ids := deviceIDComparison(tc.checkID, tc.foundID, ids)
 			assert.Equal(tc.consistent, consistent)
 			assert.Equal(tc.expectedFoundID, id)
-			assert.Equal(tc.expectedIDs, ids)
+			for _, id := range tc.expectedIDs {
+				assert.True(ids[id])
+			}
 		})
 	}
 }

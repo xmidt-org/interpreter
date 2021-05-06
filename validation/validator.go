@@ -145,7 +145,7 @@ func ConsistentDeviceIDValidator() ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		consistent := true
 		var firstID string
-		var ids []string
+		ids := make(map[string]bool)
 
 		consistent, firstID, ids = consistentIDHelper(e.Source, firstID, consistent, ids)
 		consistent, firstID, ids = consistentIDHelper(e.Destination, firstID, consistent, ids)
@@ -155,7 +155,11 @@ func ConsistentDeviceIDValidator() ValidatorFunc {
 		}
 
 		if !consistent {
-			return false, InconsistentIDErr{IDs: ids}
+			var idArray []string
+			for key := range ids {
+				idArray = append(idArray, key)
+			}
+			return false, InconsistentIDErr{IDs: idArray}
 		}
 
 		return true, nil
@@ -196,14 +200,14 @@ func BootDurationValidator(minDuration time.Duration) ValidatorFunc {
 	}
 }
 
-func consistentIDHelper(strToCheck string, compareID string, overallConsistent bool, allIDs []string) (bool, string, []string) {
+func consistentIDHelper(strToCheck string, compareID string, overallConsistent bool, allIDs map[string]bool) (bool, string, map[string]bool) {
 	consistent, foundID, ids := deviceIDComparison(strToCheck, compareID, allIDs)
 
 	allConsistent := consistent && overallConsistent
 	return allConsistent, foundID, ids
 }
 
-func deviceIDComparison(strToCheck string, compareID string, ids []string) (bool, string, []string) {
+func deviceIDComparison(strToCheck string, compareID string, ids map[string]bool) (bool, string, map[string]bool) {
 	consistent := true
 	if matches := interpreter.DeviceIDRegex.FindAllStringSubmatch(strToCheck, -1); len(matches) > 0 {
 		if len(compareID) == 0 {
@@ -211,7 +215,7 @@ func deviceIDComparison(strToCheck string, compareID string, ids []string) (bool
 		}
 
 		for _, m := range matches {
-			ids = append(ids, m[0])
+			ids[m[0]] = true
 			if compareID != m[0] {
 				consistent = false
 			}
