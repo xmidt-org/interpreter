@@ -16,6 +16,7 @@ func TestInvalidEventErr(t *testing.T) {
 		description   string
 		underlyingErr error
 		expectedLabel string
+		tag           Tag
 	}{
 		{
 			description:   "No underlying error",
@@ -31,18 +32,24 @@ func TestInvalidEventErr(t *testing.T) {
 			underlyingErr: testErr,
 			expectedLabel: "test_error",
 		},
+		{
+			description:   "With tag",
+			tag:           InvalidBootTime,
+			expectedLabel: invalidEventReason,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			err := InvalidEventErr{OriginalErr: tc.underlyingErr}
+			err := InvalidEventErr{OriginalErr: tc.underlyingErr, ErrorTag: tc.tag}
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Contains(err.Error(), "event invalid")
 			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Equal(tc.expectedLabel, err.ErrorLabel())
+			assert.Equal(tc.tag, err.Tag())
 		})
 	}
 }
@@ -52,6 +59,7 @@ func TestInvalidBootTimeErr(t *testing.T) {
 		description   string
 		underlyingErr error
 		expectedLabel string
+		tag           Tag
 	}{
 		{
 			description:   "No underlying error",
@@ -62,17 +70,30 @@ func TestInvalidBootTimeErr(t *testing.T) {
 			underlyingErr: errors.New("test error"),
 			expectedLabel: invalidBootTimeReason,
 		},
+		{
+			description:   "Underlying tag",
+			expectedLabel: invalidBootTimeReason,
+			tag:           OldBootTime,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
 			err := InvalidBootTimeErr{OriginalErr: tc.underlyingErr}
+			if tc.tag != Unknown {
+				err.ErrorTag = tc.tag
+			}
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Equal(tc.expectedLabel, err.ErrorLabel())
+			if tc.tag != Unknown {
+				assert.Equal(tc.tag, err.Tag())
+			} else {
+				assert.Equal(InvalidBootTime, err.Tag())
+			}
 		})
 	}
 }
@@ -141,6 +162,48 @@ func TestInvalidDestinationErr(t *testing.T) {
 			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Contains(err.Error(), "invalid destination")
 			assert.Equal(tc.expectedLabel, err.ErrorLabel())
+		})
+	}
+}
+
+func TestInconsistentIDErr(t *testing.T) {
+	err := InconsistentIDErr{}
+	assert.Equal(t, InconsistentDeviceID, err.Tag())
+	assert.Contains(t, err.Error(), "inconsistent device id")
+}
+
+func TestBootDurationErr(t *testing.T) {
+	tests := []struct {
+		description   string
+		underlyingErr error
+		underlyingTag Tag
+		expectedTag   Tag
+	}{
+		{
+			description: "No underlying error",
+			expectedTag: Unknown,
+		},
+		{
+			description:   "Underlying error",
+			underlyingErr: errors.New("test error"),
+			expectedTag:   Unknown,
+		},
+		{
+			description:   "Underlying tag",
+			underlyingTag: FastBoot,
+			expectedTag:   FastBoot,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			err := BootDurationErr{OriginalErr: tc.underlyingErr, ErrorTag: tc.underlyingTag}
+			if tc.underlyingErr != nil {
+				assert.Contains(err.Error(), tc.underlyingErr.Error())
+			}
+			assert.Contains(err.Error(), "boot duration error")
+			assert.Equal(tc.expectedTag, err.Tag())
 		})
 	}
 }

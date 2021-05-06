@@ -39,8 +39,13 @@ type MetricsLogError interface {
 	ErrorLabel() string
 }
 
+type TaggedError interface {
+	Tag() Tag
+}
+
 type InvalidEventErr struct {
 	OriginalErr error
+	ErrorTag    Tag
 }
 
 func (e InvalidEventErr) Error() string {
@@ -63,8 +68,13 @@ func (e InvalidEventErr) ErrorLabel() string {
 	return invalidEventReason
 }
 
+func (e InvalidEventErr) Tag() Tag {
+	return e.ErrorTag
+}
+
 type InvalidBootTimeErr struct {
 	OriginalErr error
+	ErrorTag    Tag
 }
 
 func (e InvalidBootTimeErr) Error() string {
@@ -80,6 +90,13 @@ func (e InvalidBootTimeErr) Unwrap() error {
 
 func (e InvalidBootTimeErr) ErrorLabel() string {
 	return invalidBootTimeReason
+}
+
+func (e InvalidBootTimeErr) Tag() Tag {
+	if e.ErrorTag == Unknown {
+		return InvalidBootTime
+	}
+	return e.ErrorTag
 }
 
 type InvalidBirthdateErr struct {
@@ -99,6 +116,37 @@ func (e InvalidBirthdateErr) Unwrap() error {
 
 func (e InvalidBirthdateErr) ErrorLabel() string {
 	return invalidBirthdateReason
+}
+
+type InconsistentIDErr struct {
+	IDs []string
+}
+
+func (e InconsistentIDErr) Error() string {
+	return "inconsistent device id"
+}
+
+func (e InconsistentIDErr) Tag() Tag {
+	return InconsistentDeviceID
+}
+
+type BootDurationErr struct {
+	OriginalErr error
+	ErrorTag    Tag
+	Destination string
+	Timestamps  []int64
+}
+
+func (e BootDurationErr) Error() string {
+	if e.OriginalErr != nil {
+		return fmt.Sprintf("boot duration error: %v", e.OriginalErr)
+	}
+
+	return "boot duration error"
+}
+
+func (e BootDurationErr) Tag() Tag {
+	return e.ErrorTag
 }
 
 type InvalidDestinationErr struct {

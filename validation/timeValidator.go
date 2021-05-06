@@ -19,21 +19,23 @@ package validation
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
 var (
 	ErrFutureDate  = errors.New("date is too far in the future")
 	ErrPastDate    = errors.New("date is too far in the past")
+	ErrInvalidYear = errors.New("date is before desired year")
 	ErrNilTimeFunc = errors.New("current-time function has not been set")
 )
 
-// TimeValidation sees if a given time is within the time frame it is set to validate
+// TimeValidation sees if a given time is within the time frame it is set to validate.
 type TimeValidation interface {
 	Valid(time.Time) (bool, error)
 }
 
-// TimeValidator implements the TimeValidation interface
+// TimeValidator implements the TimeValidation interface and makes sure that times are in a certain time frame.
 type TimeValidator struct {
 	Current   func() time.Time
 	ValidFrom time.Duration // should be a negative duration. If not, it will be changed to negative once Valid is called
@@ -64,6 +66,29 @@ func (t TimeValidator) Valid(date time.Time) (bool, error) {
 
 	if !(futureTime.Equal(date) || futureTime.After(date)) {
 		return false, ErrFutureDate
+	}
+
+	return true, nil
+}
+
+// YearValidator ensures that a date is after the today in a certain year.
+type YearValidator struct {
+	Current func() time.Time
+	Year    int
+}
+
+// Valid sees if a date is after today's date in a certain year.
+func (t YearValidator) Valid(date time.Time) (bool, error) {
+	if t.Current == nil {
+		return false, ErrNilTimeFunc
+	}
+
+	// check that the date is after the today in the desired year
+	now := t.Current()
+	compareDate := time.Date(t.Year, now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
+	if date.Before(compareDate) {
+		return false, fmt.Errorf("%w. Year: %d", ErrInvalidYear, t.Year)
 	}
 
 	return true, nil
