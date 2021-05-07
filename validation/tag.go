@@ -21,6 +21,10 @@ const (
 	OldBootTime
 	InvalidBootTime
 	FastBoot
+	InvalidBirthdate
+	MisalignedBirthdate
+	InvalidDestination
+	WrongEventType
 )
 
 var (
@@ -31,7 +35,11 @@ var (
 		OldBootTime:          "old_boot_time",
 		InvalidBootTime:      "invalid_boot_time",
 		FastBoot:             "suspiciously_fast_boot",
+		InvalidBirthdate:     "invalid_birthdate",
+		MisalignedBirthdate:  "misaligned_birthdate",
 		Unknown:              "unknown",
+		InvalidDestination:   "invalid_destination",
+		WrongEventType:       "wrong_event_type",
 	}
 
 	stringToTag = map[string]Tag{
@@ -40,8 +48,12 @@ var (
 		"missing_boot_time":      MissingBootTime,
 		"old_boot_time":          OldBootTime,
 		"invalid_boot_time":      InvalidBootTime,
+		"invalid_birthdate":      InvalidBirthdate,
+		"misaligned_birthdate":   MisalignedBirthdate,
 		"suspiciously_fast_boot": FastBoot,
 		"unknown":                Unknown,
+		"invalid_destination":    InvalidDestination,
+		"wrong_event_type":       WrongEventType,
 	}
 )
 

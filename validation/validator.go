@@ -27,9 +27,11 @@ import (
 )
 
 var (
-	ErrInvalidEventType = errors.New("event type doesn't match")
-	ErrNonEvent         = errors.New("not an event")
-	ErrFastBoot         = errors.New("fast booting")
+	ErrInvalidEventType     = errors.New("event type doesn't match")
+	ErrNonEvent             = errors.New("not an event")
+	ErrFastBoot             = errors.New("fast booting")
+	ErrEventRegex           = errors.New("event regex does not include type")
+	ErrBirthdateDestination = errors.New("birthdate and destination timestamps do not align")
 )
 
 // Validator validates an event, returning false and an error if the event is not valid
@@ -50,15 +52,22 @@ func (vf ValidatorFunc) Valid(e interpreter.Event) (bool, error) {
 type Validators []Validator
 
 // Valid runs through a list of Validators and checks that the Event
-// is valid against each validator. Returns false and an error at the first
-// validator that deems the Event invalid
+// is valid against each validator. Returns through all of the validators
+// and returns all of the errors collected from each one. If one validator returns
+// false, then false is returned.
 func (v Validators) Valid(e interpreter.Event) (bool, error) {
+	var allErrors Errors
 	for _, r := range v {
 		if valid, err := r.Valid(e); !valid {
-			return false, err
+			allErrors = append(allErrors, err)
 		}
 	}
-	return true, nil
+
+	if len(allErrors) == 0 {
+		return true, nil
+	}
+
+	return false, allErrors
 }
 
 // BootTimeValidator returns a ValidatorFunc that checks if an
@@ -109,6 +118,45 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 		if valid, err := tv.Valid(time.Unix(0, e.Birthdate)); !valid {
 			return false, InvalidBirthdateErr{
 				OriginalErr: err,
+				ErrorTag:    InvalidBirthdate,
+			}
+		}
+
+		return true, nil
+	}
+}
+
+// BirthdateAlignmentValidator returns a ValidatorFunc that validates that the birthdate is within a certain
+// bounds of the timestamps in the event destination (if available).
+func BirthdateAlignmentValidator(maxDuration time.Duration) ValidatorFunc {
+	timestampRegex := regexp.MustCompile(`/(?P<content>[^/]+)`)
+	index := timestampRegex.SubexpIndex("content")
+	return func(e interpreter.Event) (bool, error) {
+		matches := timestampRegex.FindAllStringSubmatch(e.Destination, -1)
+		birthdate := time.Unix(0, e.Birthdate)
+		var invalidTimestamps []int64
+		valid := true
+		for _, match := range matches {
+			if val, err := strconv.ParseInt(match[index], 10, 64); err == nil {
+				timeStamp := time.Unix(val, 0)
+				difference := birthdate.Sub(timeStamp)
+				if difference < 0 {
+					difference = difference * -1
+				}
+
+				if difference > maxDuration {
+					valid = false
+					invalidTimestamps = append(invalidTimestamps, val)
+				}
+			}
+		}
+
+		if !valid {
+			return false, InvalidBirthdateErr{
+				OriginalErr: ErrBirthdateDestination,
+				Destination: e.Destination,
+				Timestamps:  invalidTimestamps,
+				ErrorTag:    MisalignedBirthdate,
 			}
 		}
 
@@ -197,6 +245,24 @@ func BootDurationValidator(minDuration time.Duration) ValidatorFunc {
 			return false, BootDurationErr{OriginalErr: ErrFastBoot, Destination: e.Destination, Timestamps: invalidTimestamps, ErrorTag: FastBoot}
 		}
 		return true, nil
+	}
+}
+
+// EventTypeValidator returns a ValidatorFunc that validates that the event-type provided in the destination
+// matches one of the possible outcomes.
+func EventTypeValidator() ValidatorFunc {
+	index := interpreter.EventRegex.SubexpIndex("type")
+	return func(e interpreter.Event) (bool, error) {
+		match := interpreter.EventRegex.FindStringSubmatch(e.Destination)
+		var eventType string
+		if index != -1 && len(match) > index {
+			eventType = match[index]
+			if interpreter.EventTypes[eventType] {
+				return true, nil
+			}
+		}
+
+		return false, InvalidEventTypeErr{OriginalErr: ErrInvalidEventType, Destination: e.Destination, EventType: eventType}
 	}
 }
 

@@ -33,12 +33,38 @@ const (
 	eventMismatchReason = "event_type_mismatch"
 )
 
+// Errors is a Multierror that also acts as an error, so that a log-friendly
+// string can be returned but each error in the list can also be accessed.
+type Errors []error
+
+// Error concatenates the list of error strings to provide a single string
+// that can be used to represent the errors that occurred.
+func (e Errors) Error() string {
+	var output strings.Builder
+	output.Write([]byte("multiple errors: ["))
+	for i, msg := range e {
+		if i > 0 {
+			output.WriteRune(',')
+			output.WriteRune(' ')
+		}
+		output.WriteString(msg.Error())
+	}
+	output.WriteRune(']')
+	return output.String()
+}
+
+// Errors returns the list of errors.
+func (e Errors) Errors() []error {
+	return e
+}
+
 // MetricsLogError is an optional interface for errors to implement if the error should be
 // logged by prometheus metrics with a certain label.
 type MetricsLogError interface {
 	ErrorLabel() string
 }
 
+// TaggedError is an optional interface for errors to implement if the error should include a Tag.
 type TaggedError interface {
 	Tag() Tag
 }
@@ -99,8 +125,29 @@ func (e InvalidBootTimeErr) Tag() Tag {
 	return e.ErrorTag
 }
 
+type InvalidEventTypeErr struct {
+	OriginalErr error
+	Destination string
+	EventType   string
+}
+
+func (e InvalidEventTypeErr) Error() string {
+	if e.OriginalErr != nil {
+		return fmt.Sprintf("invalid event type: %v", e.OriginalErr)
+	}
+
+	return "invalid event type"
+}
+
+func (e InvalidEventTypeErr) Unwrap() error {
+	return e.OriginalErr
+}
+
 type InvalidBirthdateErr struct {
 	OriginalErr error
+	ErrorTag    Tag
+	Destination string
+	Timestamps  []int64
 }
 
 func (e InvalidBirthdateErr) Error() string {
@@ -112,6 +159,13 @@ func (e InvalidBirthdateErr) Error() string {
 
 func (e InvalidBirthdateErr) Unwrap() error {
 	return e.OriginalErr
+}
+
+func (e InvalidBirthdateErr) Tag() Tag {
+	if e.ErrorTag == Unknown {
+		return InvalidBirthdate
+	}
+	return e.ErrorTag
 }
 
 func (e InvalidBirthdateErr) ErrorLabel() string {
@@ -152,6 +206,7 @@ func (e BootDurationErr) Tag() Tag {
 type InvalidDestinationErr struct {
 	OriginalErr error
 	ErrLabel    string
+	ErrorTag    Tag
 }
 
 func (e InvalidDestinationErr) Error() string {
@@ -171,4 +226,11 @@ func (e InvalidDestinationErr) ErrorLabel() string {
 	}
 
 	return invalidDestinationReason
+}
+
+func (e InvalidDestinationErr) Tag() Tag {
+	if e.ErrorTag == Unknown {
+		return InvalidDestination
+	}
+	return e.ErrorTag
 }
