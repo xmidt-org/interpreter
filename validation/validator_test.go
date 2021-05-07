@@ -233,7 +233,7 @@ func TestDestinationValidator(t *testing.T) {
 				Destination: "event:device-status/mac:112233445566/random-event/random-string",
 			},
 			valid:       false,
-			expectedErr: ErrInvalidEventType,
+			expectedErr: ErrEventTypeMismatch,
 		},
 		{
 			description: "Invalid event",
@@ -578,7 +578,7 @@ func TestEventTypesValidator(t *testing.T) {
 				Destination: "event:device-status/mac:112233445566",
 			},
 			expectedValid: false,
-			expectedErr:   ErrInvalidEventType,
+			expectedErr:   interpreter.ErrTypeNotFound,
 		},
 	}
 
@@ -588,7 +588,7 @@ func TestEventTypesValidator(t *testing.T) {
 			valid, err := val.Valid(tc.event)
 			assert.Equal(tc.expectedValid, valid)
 			if tc.expectedErr != nil {
-				var invalidTypeErr InvalidEventTypeErr
+				var invalidTypeErr InvalidDestinationErr
 				assert.True(errors.Is(err, tc.expectedErr))
 				assert.True(errors.As(err, &invalidTypeErr))
 				assert.Equal(tc.expectedMatch, invalidTypeErr.EventType)

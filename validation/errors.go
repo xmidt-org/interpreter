@@ -23,16 +23,6 @@ import (
 	"strings"
 )
 
-const (
-	invalidEventReason       = "invalid_event_err"
-	invalidBootTimeReason    = "invalid_boot_time"
-	invalidBirthdateReason   = "invalid_birthdate"
-	invalidDestinationReason = "invalid_destination"
-
-	nonEventReason      = "non_event"
-	eventMismatchReason = "event_type_mismatch"
-)
-
 // Errors is a Multierror that also acts as an error, so that a log-friendly
 // string can be returned but each error in the list can also be accessed.
 type Errors []error
@@ -58,17 +48,12 @@ func (e Errors) Errors() []error {
 	return e
 }
 
-// MetricsLogError is an optional interface for errors to implement if the error should be
-// logged by prometheus metrics with a certain label.
-type MetricsLogError interface {
-	ErrorLabel() string
-}
-
 // TaggedError is an optional interface for errors to implement if the error should include a Tag.
 type TaggedError interface {
 	Tag() Tag
 }
 
+// InvalidEventErr is a Tag Error that wraps an underlying error.
 type InvalidEventErr struct {
 	OriginalErr error
 	ErrorTag    Tag
@@ -85,19 +70,21 @@ func (e InvalidEventErr) Unwrap() error {
 	return e.OriginalErr
 }
 
-func (e InvalidEventErr) ErrorLabel() string {
-	var err MetricsLogError
-	if ok := errors.As(e.OriginalErr, &err); ok {
-		return strings.Replace(err.ErrorLabel(), " ", "_", -1)
+// Tag returns the ErrorTag if it has been set, then checks the underlying error for a tag and returns that if set.
+func (e InvalidEventErr) Tag() Tag {
+	if e.ErrorTag != Unknown {
+		return e.ErrorTag
 	}
 
-	return invalidEventReason
-}
+	var taggedErr TaggedError
+	if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErr) {
+		return taggedErr.Tag()
+	}
 
-func (e InvalidEventErr) Tag() Tag {
 	return e.ErrorTag
 }
 
+// InvalidBootTimeErr is an error returned when the boot-time of an event is invalid.
 type InvalidBootTimeErr struct {
 	OriginalErr error
 	ErrorTag    Tag
@@ -114,10 +101,7 @@ func (e InvalidBootTimeErr) Unwrap() error {
 	return e.OriginalErr
 }
 
-func (e InvalidBootTimeErr) ErrorLabel() string {
-	return invalidBootTimeReason
-}
-
+// Tag returns the default tag of InvalidBootTime if the tag is not set.
 func (e InvalidBootTimeErr) Tag() Tag {
 	if e.ErrorTag == Unknown {
 		return InvalidBootTime
@@ -125,24 +109,7 @@ func (e InvalidBootTimeErr) Tag() Tag {
 	return e.ErrorTag
 }
 
-type InvalidEventTypeErr struct {
-	OriginalErr error
-	Destination string
-	EventType   string
-}
-
-func (e InvalidEventTypeErr) Error() string {
-	if e.OriginalErr != nil {
-		return fmt.Sprintf("invalid event type: %v", e.OriginalErr)
-	}
-
-	return "invalid event type"
-}
-
-func (e InvalidEventTypeErr) Unwrap() error {
-	return e.OriginalErr
-}
-
+// InvalidBirthdateErr is an error returned when the birthdate of an event is invalid.
 type InvalidBirthdateErr struct {
 	OriginalErr error
 	ErrorTag    Tag
@@ -161,6 +128,7 @@ func (e InvalidBirthdateErr) Unwrap() error {
 	return e.OriginalErr
 }
 
+// Tag returns the InvalidBirthdate tag as default if the tag is not set.
 func (e InvalidBirthdateErr) Tag() Tag {
 	if e.ErrorTag == Unknown {
 		return InvalidBirthdate
@@ -168,10 +136,7 @@ func (e InvalidBirthdateErr) Tag() Tag {
 	return e.ErrorTag
 }
 
-func (e InvalidBirthdateErr) ErrorLabel() string {
-	return invalidBirthdateReason
-}
-
+// InconsistentIDErr is an error returned when the ids in an event is inconsistent.
 type InconsistentIDErr struct {
 	IDs []string
 }
@@ -180,10 +145,12 @@ func (e InconsistentIDErr) Error() string {
 	return "inconsistent device id"
 }
 
+// Tag will always return the InconsistentDeviceID tag.
 func (e InconsistentIDErr) Tag() Tag {
 	return InconsistentDeviceID
 }
 
+// BootDurationErr is an error that is returned when the device boot duration is deemed invalid.
 type BootDurationErr struct {
 	OriginalErr error
 	ErrorTag    Tag
@@ -199,14 +166,24 @@ func (e BootDurationErr) Error() string {
 	return "boot duration error"
 }
 
+func (e BootDurationErr) Unwrap() error {
+	return e.OriginalErr
+}
+
+// Tag returns InvalidBootDuration as the default tag if the tag is not set.
 func (e BootDurationErr) Tag() Tag {
+	if e.ErrorTag == Unknown {
+		return InvalidBootDuration
+	}
 	return e.ErrorTag
 }
 
+// InvalidDestinationErr is an error that is returned whenever there is something wrong with an event's destination.
 type InvalidDestinationErr struct {
 	OriginalErr error
-	ErrLabel    string
 	ErrorTag    Tag
+	Destination string
+	EventType   string
 }
 
 func (e InvalidDestinationErr) Error() string {
@@ -220,14 +197,7 @@ func (e InvalidDestinationErr) Unwrap() error {
 	return e.OriginalErr
 }
 
-func (e InvalidDestinationErr) ErrorLabel() string {
-	if len(e.ErrLabel) > 0 {
-		return strings.ReplaceAll(e.ErrLabel, " ", "_")
-	}
-
-	return invalidDestinationReason
-}
-
+// Tag returns InvalidDestination as the default tag if the tag is not set.
 func (e InvalidDestinationErr) Tag() Tag {
 	if e.ErrorTag == Unknown {
 		return InvalidDestination

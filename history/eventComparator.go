@@ -22,16 +22,12 @@ import (
 	"regexp"
 
 	"github.com/xmidt-org/interpreter"
+	"github.com/xmidt-org/interpreter/validation"
 )
 
 var (
 	errNewerBootTime  = errors.New("newer boot-time found")
 	errDuplicateEvent = errors.New("duplicate event found")
-)
-
-const (
-	newerBootTimeReason  = "newer_boottime_found"
-	duplicateEventReason = "duplicate_event_found"
 )
 
 // Comparator compares two events and returns true if the condition has been matched.
@@ -81,7 +77,7 @@ func OlderBootTimeComparator() ComparatorFunc {
 
 		// if this event has a boot-time more recent than the latest one, return an error
 		if bootTime > latestBootTime {
-			return true, ComparatorErr{OriginalErr: errNewerBootTime, ErrLabel: newerBootTimeReason, ComparisonEvent: baseEvent}
+			return true, ComparatorErr{OriginalErr: errNewerBootTime, ErrorTag: validation.OutdatedBootTime, ComparisonEvent: baseEvent}
 		}
 
 		return false, nil
@@ -101,7 +97,7 @@ func DuplicateEventComparator(eventType *regexp.Regexp) ComparatorFunc {
 			return false, nil
 		}
 
-		// see if event is the type we are looking for
+		// see if event is the type we are looking forß
 		if eventType.MatchString(baseEvent.Destination) && eventType.MatchString(newEvent.Destination) {
 			latestBootTime, _ := newEvent.BootTime()
 			bootTime, err := baseEvent.BootTime()
@@ -112,7 +108,7 @@ func DuplicateEventComparator(eventType *regexp.Regexp) ComparatorFunc {
 			// If the boot-time is the same as the latestBootTime, and the birthdate is older or equal,
 			// this means that newEvent is a duplicate.
 			if bootTime == latestBootTime && baseEvent.Birthdate <= newEvent.Birthdate {
-				return true, ComparatorErr{OriginalErr: errDuplicateEvent, ErrLabel: duplicateEventReason, ComparisonEvent: baseEvent}
+				return true, ComparatorErr{OriginalErr: errDuplicateEvent, ErrorTag: validation.DuplicateEvent, ComparisonEvent: baseEvent}
 			}
 		}
 

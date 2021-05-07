@@ -17,43 +17,58 @@ const (
 	Unknown Tag = iota
 	Pass
 	InconsistentDeviceID
+	InvalidBootTime
 	MissingBootTime
 	OldBootTime
-	InvalidBootTime
+	OutdatedBootTime
+	InvalidBootDuration
 	FastBoot
 	InvalidBirthdate
 	MisalignedBirthdate
 	InvalidDestination
-	WrongEventType
+	NonEvent
+	InvalidEventType
+	EventTypeMismatch
+	DuplicateEvent
 )
 
 var (
 	tagToString = map[Tag]string{
+		Unknown:              "unknown",
 		Pass:                 "pass",
 		InconsistentDeviceID: "inconsistent_device_id",
-		MissingBootTime:      "missing_boot_time",
-		OldBootTime:          "old_boot_time",
 		InvalidBootTime:      "invalid_boot_time",
+		MissingBootTime:      "missing_boot_time",
+		OldBootTime:          "suspiciously_old_boot_time",
+		OutdatedBootTime:     "outdated_boot_time",
+		InvalidBootDuration:  "invalid_boot_duration",
 		FastBoot:             "suspiciously_fast_boot",
 		InvalidBirthdate:     "invalid_birthdate",
 		MisalignedBirthdate:  "misaligned_birthdate",
-		Unknown:              "unknown",
 		InvalidDestination:   "invalid_destination",
-		WrongEventType:       "wrong_event_type",
+		NonEvent:             "not_an_event",
+		InvalidEventType:     "invalid_event_type",
+		EventTypeMismatch:    "event_type_mismatch",
+		DuplicateEvent:       "duplicate_event",
 	}
 
 	stringToTag = map[string]Tag{
-		"pass":                   Pass,
-		"inconsistent_device_id": InconsistentDeviceID,
-		"missing_boot_time":      MissingBootTime,
-		"old_boot_time":          OldBootTime,
-		"invalid_boot_time":      InvalidBootTime,
-		"invalid_birthdate":      InvalidBirthdate,
-		"misaligned_birthdate":   MisalignedBirthdate,
-		"suspiciously_fast_boot": FastBoot,
-		"unknown":                Unknown,
-		"invalid_destination":    InvalidDestination,
-		"wrong_event_type":       WrongEventType,
+		"unknown":                    Unknown,
+		"pass":                       Pass,
+		"inconsistent_device_id":     InconsistentDeviceID,
+		"invalid_boot_time":          InvalidBootTime,
+		"missing_boot_time":          MissingBootTime,
+		"suspiciously_old_boot_time": OldBootTime,
+		"outdated_boot_time":         OutdatedBootTime,
+		"invalid_boot_duration":      InvalidBootDuration,
+		"suspiciously_fast_boot":     FastBoot,
+		"invalid_birthdate":          InvalidBirthdate,
+		"misaligned_birthdate":       MisalignedBirthdate,
+		"invalid_destination":        InvalidDestination,
+		"not_an_event":               NonEvent,
+		"invalid_event_type":         InvalidEventType,
+		"event_type_mismatch":        EventTypeMismatch,
+		"duplicate_event":            DuplicateEvent,
 	}
 )
 

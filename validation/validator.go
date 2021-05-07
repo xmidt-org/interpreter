@@ -27,7 +27,8 @@ import (
 )
 
 var (
-	ErrInvalidEventType     = errors.New("event type doesn't match")
+	ErrInvalidEventType     = errors.New("event type is not valid")
+	ErrEventTypeMismatch    = errors.New("event type doesn't match")
 	ErrNonEvent             = errors.New("not an event")
 	ErrFastBoot             = errors.New("fast booting")
 	ErrEventRegex           = errors.New("event regex does not include type")
@@ -112,7 +113,7 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		birthdate := e.Birthdate
 		if birthdate <= 0 {
-			return false, InvalidBirthdateErr{}
+			return false, InvalidBirthdateErr{ErrorTag: InvalidBirthdate}
 		}
 
 		if valid, err := tv.Valid(time.Unix(0, e.Birthdate)); !valid {
@@ -171,15 +172,16 @@ func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 		if !interpreter.EventRegex.MatchString(e.Destination) {
 			return false, InvalidDestinationErr{
 				OriginalErr: ErrNonEvent,
-				ErrLabel:    nonEventReason,
+				Destination: e.Destination,
+				ErrorTag:    NonEvent,
 			}
-
 		}
 
 		if !regex.MatchString(e.Destination) {
 			return false, InvalidDestinationErr{
-				OriginalErr: ErrInvalidEventType,
-				ErrLabel:    eventMismatchReason,
+				OriginalErr: ErrEventTypeMismatch,
+				Destination: e.Destination,
+				ErrorTag:    EventTypeMismatch,
 			}
 		}
 
@@ -187,7 +189,7 @@ func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 	}
 }
 
-// ConsistentDeviceIDValidator returns a ValidatorFunc that validates that the all occurrences
+// ConsistentDeviceIDValidator returns a ValidatorFunc that validates that all occurrences
 // of the device id in an event's source, destination, or metadata are consistent.
 func ConsistentDeviceIDValidator() ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
@@ -251,18 +253,27 @@ func BootDurationValidator(minDuration time.Duration) ValidatorFunc {
 // EventTypeValidator returns a ValidatorFunc that validates that the event-type provided in the destination
 // matches one of the possible outcomes.
 func EventTypeValidator() ValidatorFunc {
-	index := interpreter.EventRegex.SubexpIndex("type")
 	return func(e interpreter.Event) (bool, error) {
-		match := interpreter.EventRegex.FindStringSubmatch(e.Destination)
-		var eventType string
-		if index != -1 && len(match) > index {
-			eventType = match[index]
-			if interpreter.EventTypes[eventType] {
-				return true, nil
+		eventType, err := e.EventType()
+		if err != nil {
+			return false, InvalidDestinationErr{
+				OriginalErr: err,
+				Destination: e.Destination,
+				EventType:   eventType,
+				ErrorTag:    InvalidEventType,
 			}
 		}
 
-		return false, InvalidEventTypeErr{OriginalErr: ErrInvalidEventType, Destination: e.Destination, EventType: eventType}
+		if len(eventType) == 0 || !interpreter.EventTypes[eventType] {
+			return false, InvalidDestinationErr{
+				OriginalErr: ErrInvalidEventType,
+				Destination: e.Destination,
+				EventType:   eventType,
+				ErrorTag:    InvalidEventType,
+			}
+		}
+
+		return true, nil
 	}
 }
 

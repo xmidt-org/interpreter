@@ -9,33 +9,37 @@ import (
 
 func TestInvalidEventErr(t *testing.T) {
 	testErr := testError{
-		err:   errors.New("test error"),
-		label: "test error",
+		err: errors.New("test error"),
+		tag: InvalidBirthdate,
 	}
 	tests := []struct {
 		description   string
 		underlyingErr error
-		expectedLabel string
 		tag           Tag
+		expectedTag   Tag
 	}{
 		{
-			description:   "No underlying error",
-			expectedLabel: invalidEventReason,
+			description: "No underlying error",
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedLabel: invalidEventReason,
 		},
 		{
-			description:   "Underlying error label",
+			description:   "Underlying error tag",
 			underlyingErr: testErr,
-			expectedLabel: "test_error",
+			expectedTag:   testErr.Tag(),
 		},
 		{
-			description:   "With tag",
+			description: "With tag",
+			tag:         InvalidBootTime,
+			expectedTag: InvalidBootTime,
+		},
+		{
+			description:   "With tag vs underlyingTag",
 			tag:           InvalidBootTime,
-			expectedLabel: invalidEventReason,
+			underlyingErr: testErr,
+			expectedTag:   InvalidBootTime,
 		},
 	}
 
@@ -48,8 +52,7 @@ func TestInvalidEventErr(t *testing.T) {
 			}
 			assert.Contains(err.Error(), "event invalid")
 			assert.Equal(tc.underlyingErr, err.Unwrap())
-			assert.Equal(tc.expectedLabel, err.ErrorLabel())
-			assert.Equal(tc.tag, err.Tag())
+			assert.Equal(tc.expectedTag, err.Tag())
 		})
 	}
 }
@@ -58,22 +61,18 @@ func TestInvalidBootTimeErr(t *testing.T) {
 	tests := []struct {
 		description   string
 		underlyingErr error
-		expectedLabel string
 		tag           Tag
 	}{
 		{
-			description:   "No underlying error",
-			expectedLabel: invalidBootTimeReason,
+			description: "No underlying error",
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedLabel: invalidBootTimeReason,
 		},
 		{
-			description:   "Underlying tag",
-			expectedLabel: invalidBootTimeReason,
-			tag:           OldBootTime,
+			description: "Underlying tag",
+			tag:         OldBootTime,
 		},
 	}
 
@@ -88,7 +87,6 @@ func TestInvalidBootTimeErr(t *testing.T) {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Equal(tc.underlyingErr, err.Unwrap())
-			assert.Equal(tc.expectedLabel, err.ErrorLabel())
 			if tc.tag != Unknown {
 				assert.Equal(tc.tag, err.Tag())
 			} else {
@@ -102,28 +100,34 @@ func TestInvalidBirthdateErr(t *testing.T) {
 	tests := []struct {
 		description   string
 		underlyingErr error
-		expectedLabel string
+		tag           Tag
 	}{
 		{
-			description:   "No underlying error",
-			expectedLabel: invalidBirthdateReason,
+			description: "No underlying error",
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedLabel: invalidBirthdateReason,
+		},
+		{
+			description: "Underlying tag",
+			tag:         MisalignedBirthdate,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			err := InvalidBirthdateErr{OriginalErr: tc.underlyingErr}
+			err := InvalidBirthdateErr{OriginalErr: tc.underlyingErr, ErrorTag: tc.tag}
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Equal(tc.underlyingErr, err.Unwrap())
-			assert.Equal(tc.expectedLabel, err.ErrorLabel())
+			if tc.tag != Unknown {
+				assert.Equal(tc.tag, err.Tag())
+			} else {
+				assert.Equal(InvalidBirthdate, err.Tag())
+			}
 		})
 	}
 }
@@ -132,36 +136,35 @@ func TestInvalidDestinationErr(t *testing.T) {
 	tests := []struct {
 		description   string
 		underlyingErr error
-		label         string
-		expectedLabel string
+		tag           Tag
 	}{
 		{
-			description:   "No underlying error",
-			expectedLabel: invalidDestinationReason,
+			description: "No underlying error",
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedLabel: invalidDestinationReason,
 		},
 		{
-			description:   "Underlying error with label",
-			underlyingErr: errors.New("test error"),
-			label:         "test_error",
-			expectedLabel: "test_error",
+			description: "Underlying tag",
+			tag:         InvalidEventType,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			err := InvalidDestinationErr{OriginalErr: tc.underlyingErr, ErrLabel: tc.label}
+			err := InvalidDestinationErr{OriginalErr: tc.underlyingErr, ErrorTag: tc.tag}
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Contains(err.Error(), "invalid destination")
-			assert.Equal(tc.expectedLabel, err.ErrorLabel())
+			if tc.tag != Unknown {
+				assert.Equal(tc.tag, err.Tag())
+			} else {
+				assert.Equal(InvalidDestination, err.Tag())
+			}
 		})
 	}
 }
@@ -181,12 +184,12 @@ func TestBootDurationErr(t *testing.T) {
 	}{
 		{
 			description: "No underlying error",
-			expectedTag: Unknown,
+			expectedTag: InvalidBootDuration,
 		},
 		{
 			description:   "Underlying error",
 			underlyingErr: errors.New("test error"),
-			expectedTag:   Unknown,
+			expectedTag:   InvalidBootDuration,
 		},
 		{
 			description:   "Underlying tag",
