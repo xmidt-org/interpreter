@@ -7,6 +7,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestErrors(t *testing.T) {
+	assert := assert.New(t)
+	errList := []error{errors.New("test"), errors.New("test2"), errors.New("test3")}
+	e := Errors(errList)
+	for _, err := range errList {
+		assert.Contains(e.Error(), err.Error())
+		assert.Contains(e.Errors(), err)
+	}
+}
 func TestInvalidEventErr(t *testing.T) {
 	testErr := testError{
 		err: errors.New("test error"),
@@ -206,6 +215,7 @@ func TestBootDurationErr(t *testing.T) {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
 			assert.Contains(err.Error(), "boot duration error")
+			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Equal(tc.expectedTag, err.Tag())
 		})
 	}
