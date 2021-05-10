@@ -51,6 +51,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 		incomingEvent interpreter.Event
 		match         bool
 		expectedErr   error
+		expectedTag   validation.Tag
 	}{
 		{
 			description: "valid event",
@@ -91,6 +92,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 			incomingEvent: latestEvent,
 			match:         true,
 			expectedErr:   errNewerBootTime,
+			expectedTag:   validation.OutdatedBootTime,
 		},
 		{
 			description: "latest boot-time invalid",
@@ -103,6 +105,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 			},
 			match:       true,
 			expectedErr: errNewerBootTime,
+			expectedTag: validation.OutdatedBootTime,
 		},
 	}
 
@@ -121,8 +124,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 
 				var tagError validation.TaggedError
 				assert.True(errors.As(err, &tagError))
-				//TODO: revise
-				// assert.Equal(newerBootTimeReason, logError.ErrorLabel())
+				assert.Equal(tc.expectedTag, tagError.Tag())
 			}
 		})
 	}
@@ -146,6 +148,7 @@ func TestDuplicateEventComparator(t *testing.T) {
 		incomingEvent interpreter.Event
 		match         bool
 		expectedErr   error
+		expectedTag   validation.Tag
 	}{
 		{
 			description: "valid event",
@@ -228,6 +231,7 @@ func TestDuplicateEventComparator(t *testing.T) {
 			incomingEvent: latestEvent,
 			match:         true,
 			expectedErr:   errDuplicateEvent,
+			expectedTag:   validation.DuplicateEvent,
 		},
 		{
 			description: "duplicate found, same birthdate",
@@ -240,6 +244,7 @@ func TestDuplicateEventComparator(t *testing.T) {
 			incomingEvent: latestEvent,
 			match:         true,
 			expectedErr:   errDuplicateEvent,
+			expectedTag:   validation.DuplicateEvent,
 		},
 		{
 			description: "duplicate found, later birthdate",
@@ -281,8 +286,7 @@ func TestDuplicateEventComparator(t *testing.T) {
 				)
 				var tagError validation.TaggedError
 				assert.True(errors.As(err, &tagError))
-				// TODO: revise
-				// assert.Equal(duplicateEventReason, logError.ErrorLabel())
+				assert.Equal(tc.expectedTag, tagError.Tag())
 			}
 		})
 	}

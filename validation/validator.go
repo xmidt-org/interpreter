@@ -53,8 +53,8 @@ func (vf ValidatorFunc) Valid(e interpreter.Event) (bool, error) {
 type Validators []Validator
 
 // Valid runs through a list of Validators and checks that the Event
-// is valid against each validator. Returns through all of the validators
-// and returns all of the errors collected from each one. If one validator returns
+// is valid against each validator. It runs through all of the validators
+// and returns the errors collected from each one. If at least one validator returns
 // false, then false is returned.
 func (v Validators) Valid(e interpreter.Event) (bool, error) {
 	var allErrors Errors

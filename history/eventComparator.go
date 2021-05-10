@@ -97,7 +97,7 @@ func DuplicateEventComparator(eventType *regexp.Regexp) ComparatorFunc {
 			return false, nil
 		}
 
-		// see if event is the type we are looking forß
+		// see if event is the type we are looking for
 		if eventType.MatchString(baseEvent.Destination) && eventType.MatchString(newEvent.Destination) {
 			latestBootTime, _ := newEvent.BootTime()
 			bootTime, err := baseEvent.BootTime()
