@@ -3,7 +3,6 @@ package validation
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"testing"
 	"time"
 
@@ -205,48 +204,60 @@ func TestBirthdateValidator(t *testing.T) {
 }
 
 func TestDestinationValidator(t *testing.T) {
-	validator := DestinationValidator(regexp.MustCompile(".*/some-event/.*"))
 	tests := []struct {
-		description string
-		event       interpreter.Event
-		valid       bool
-		expectedErr error
+		description       string
+		event             interpreter.Event
+		searchedEventType string
+		valid             bool
+		expectedErr       error
 	}{
 		{
 			description: "Valid event",
 			event: interpreter.Event{
 				Destination: "event:device-status/mac:112233445566/some-event/random-string",
 			},
-			valid: true,
+			searchedEventType: "some-event",
+			valid:             true,
 		},
 		{
-			description: "event regex mismatch",
+			description: "Valid despite case",
 			event: interpreter.Event{
-				Destination: "some-prefix/device-id/some-event/112233445566/random",
+				Destination: "event:device-status/mac:112233445566/SOME-EVENT/random-string",
 			},
-			valid:       false,
-			expectedErr: ErrNonEvent,
+			searchedEventType: "some-event",
+			valid:             true,
+		},
+		{
+			description: "Valid despite case",
+			event: interpreter.Event{
+				Destination: "event:device-status/mac:112233445566/some-event/random-string",
+			},
+			searchedEventType: "SOME-EVENT",
+			valid:             true,
 		},
 		{
 			description: "event type mismatch",
 			event: interpreter.Event{
 				Destination: "event:device-status/mac:112233445566/random-event/random-string",
 			},
-			valid:       false,
-			expectedErr: ErrEventTypeMismatch,
+			valid:             false,
+			searchedEventType: "some-event",
+			expectedErr:       ErrEventTypeMismatch,
 		},
 		{
 			description: "Invalid event",
 			event: interpreter.Event{
 				Destination: "/random-event/",
 			},
-			expectedErr: ErrNonEvent,
+			searchedEventType: "some-event",
+			expectedErr:       ErrNonEvent,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
+			validator := DestinationValidator(tc.searchedEventType)
 			valid, err := validator(tc.event)
 			assert.Equal(tc.valid, valid)
 			if tc.expectedErr == nil || err == nil {

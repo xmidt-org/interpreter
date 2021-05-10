@@ -21,6 +21,7 @@ import (
 	"errors"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/xmidt-org/interpreter"
@@ -167,7 +168,8 @@ func BirthdateAlignmentValidator(maxDuration time.Duration) ValidatorFunc {
 
 // DestinationValidator takes in a regex and returns a ValidatorFunc that checks if an
 // Event's destination is valid against the EventRegex and this regex.
-func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
+func DestinationValidator(searchedEventType string) ValidatorFunc {
+	searchedEventType = strings.ToLower(strings.TrimSpace(searchedEventType))
 	return func(e interpreter.Event) (bool, error) {
 		if !interpreter.EventRegex.MatchString(e.Destination) {
 			return false, InvalidDestinationErr{
@@ -177,7 +179,9 @@ func DestinationValidator(regex *regexp.Regexp) ValidatorFunc {
 			}
 		}
 
-		if !regex.MatchString(e.Destination) {
+		eventType, _ := e.EventType()
+		eventType = strings.ToLower(strings.TrimSpace(eventType))
+		if eventType != searchedEventType {
 			return false, InvalidDestinationErr{
 				OriginalErr: ErrEventTypeMismatch,
 				Destination: e.Destination,
