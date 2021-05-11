@@ -59,7 +59,7 @@ func (e Errors) Errors() []error {
 }
 
 // Tag implements the TaggedError interface, returning MultipleTags if there are multiple errors with tags.
-// If there is only one one tag, Tag will return it. If no tags exist, Tag returns Unknown.
+// If there is only one error with a tag, Tag will return it. If no tags exist, Tag returns Unknown.
 func (e Errors) Tag() Tag {
 	var tag Tag
 	for _, err := range e {
