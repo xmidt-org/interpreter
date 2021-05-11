@@ -166,8 +166,8 @@ func BirthdateAlignmentValidator(maxDuration time.Duration) ValidatorFunc {
 	}
 }
 
-// DestinationValidator takes in a regex and returns a ValidatorFunc that checks if an
-// Event's destination is valid against the EventRegex and this regex.
+// DestinationValidator takes in a string and returns a ValidatorFunc that checks if
+// an Event's event type is valid and matches the type being searched for.
 func DestinationValidator(searchedEventType string) ValidatorFunc {
 	searchedEventType = strings.ToLower(strings.TrimSpace(searchedEventType))
 	return func(e interpreter.Event) (bool, error) {
