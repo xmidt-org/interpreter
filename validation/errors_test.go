@@ -8,13 +8,51 @@ import (
 )
 
 func TestErrors(t *testing.T) {
-	assert := assert.New(t)
-	errList := []error{errors.New("test"), errors.New("test2"), errors.New("test3")}
-	e := Errors(errList)
-	for _, err := range errList {
-		assert.Contains(e.Error(), err.Error())
-		assert.Contains(e.Errors(), err)
+	tests := []struct {
+		description  string
+		errList      []error
+		expectedTags []Tag
+		expectedTag  Tag
+	}{
+		{
+			description:  "no tags",
+			errList:      []error{errors.New("test"), errors.New("test2"), errors.New("test3")},
+			expectedTags: []Tag{Unknown, Unknown, Unknown},
+			expectedTag:  Unknown,
+		},
+		{
+			description: "all tags",
+			errList: []error{
+				testError{err: errors.New("test"), tag: 1000},
+				testError{err: errors.New("test2"), tag: 2000},
+				testError{err: errors.New("test3"), tag: 3000}},
+			expectedTags: []Tag{1000, 2000, 3000},
+			expectedTag:  MultipleTags,
+		},
+		{
+			description: "one tag",
+			errList: []error{
+				errors.New("test"),
+				testError{err: errors.New("test2"), tag: 2000},
+				errors.New("test3")},
+			expectedTags: []Tag{Unknown, 2000, Unknown},
+			expectedTag:  2000,
+		},
 	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			e := Errors(tc.errList)
+			for _, err := range tc.errList {
+				assert.Contains(e.Error(), err.Error())
+				assert.Contains(e.Errors(), err)
+				assert.ElementsMatch(tc.expectedTags, e.Tags())
+				assert.Equal(tc.expectedTag, e.Tag())
+			}
+		})
+	}
+
 }
 func TestInvalidEventErr(t *testing.T) {
 	testErr := testError{

@@ -23,6 +23,16 @@ import (
 	"strings"
 )
 
+// TaggedError is an optional interface for errors to implement if the error should include a Tag.
+type TaggedError interface {
+	Tag() Tag
+}
+
+// TaggedErrors is an optional interface for errors to implement if the error should include multiple tags.
+type TaggedErrors interface {
+	Tags() []Tag
+}
+
 // Errors is a Multierror that also acts as an error, so that a log-friendly
 // string can be returned but each error in the list can also be accessed.
 type Errors []error
@@ -48,9 +58,38 @@ func (e Errors) Errors() []error {
 	return e
 }
 
-// TaggedError is an optional interface for errors to implement if the error should include a Tag.
-type TaggedError interface {
-	Tag() Tag
+// Tag implements the TaggedError interface, returning MultipleTags if there are multiple errors with tags.
+// If there is only one one tag, Tag will return it. If no tags exist, Tag returns Unknown.
+func (e Errors) Tag() Tag {
+	var tag Tag
+	for _, err := range e {
+		var taggedErr TaggedError
+		if errors.As(err, &taggedErr) {
+			if tag != Unknown {
+				return MultipleTags
+			}
+			tag = taggedErr.Tag()
+		}
+	}
+
+	return tag
+}
+
+// Tags implements the TaggedErrors interface, returning a []Tag containing all of the
+// errors' tags. If an error in the list is not a TaggedError, the tag Unknown
+// will be placed in the list.
+func (e Errors) Tags() []Tag {
+	tags := make([]Tag, len(e))
+	for i, err := range e {
+		var taggedErr TaggedError
+		if errors.As(err, &taggedErr) {
+			tags[i] = taggedErr.Tag()
+		} else {
+			tags[i] = Unknown
+		}
+	}
+
+	return tags
 }
 
 // InvalidEventErr is a Tag Error that wraps an underlying error.

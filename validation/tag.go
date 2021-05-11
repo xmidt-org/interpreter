@@ -16,6 +16,7 @@ func (t Tag) String() string {
 const (
 	Unknown Tag = iota
 	Pass
+	MultipleTags
 	InconsistentDeviceID
 	InvalidBootTime
 	MissingBootTime
@@ -35,6 +36,7 @@ const (
 const (
 	UnknownStr              = "unknown"
 	PassStr                 = "pass"
+	MultipleTagsStr         = "multiple_tags"
 	InconsistentDeviceIDStr = "inconsistent_device_id"
 	InvalidBootTimeStr      = "invalid_boot_time"
 	MissingBootTimeStr      = "missing_boot_time"
@@ -55,6 +57,7 @@ var (
 	tagToString = map[Tag]string{
 		Unknown:              UnknownStr,
 		Pass:                 PassStr,
+		MultipleTags:         MultipleTagsStr,
 		InconsistentDeviceID: InconsistentDeviceIDStr,
 		InvalidBootTime:      InvalidBootTimeStr,
 		MissingBootTime:      MissingBootTimeStr,
@@ -74,6 +77,7 @@ var (
 	stringToTag = map[string]Tag{
 		UnknownStr:              Unknown,
 		PassStr:                 Pass,
+		MultipleTagsStr:         MultipleTags,
 		InconsistentDeviceIDStr: InconsistentDeviceID,
 		InvalidBootTimeStr:      InvalidBootTime,
 		MissingBootTimeStr:      MissingBootTime,
