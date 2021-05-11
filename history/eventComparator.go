@@ -77,7 +77,7 @@ func OlderBootTimeComparator() ComparatorFunc {
 
 		// if this event has a boot-time more recent than the latest one, return an error
 		if bootTime > latestBootTime {
-			return true, ComparatorErr{OriginalErr: errNewerBootTime, ErrorTag: validation.OutdatedBootTime, ComparisonEvent: baseEvent}
+			return true, ComparatorErr{OriginalErr: errNewerBootTime, ErrorTag: validation.NewerBootTimeFound, ComparisonEvent: baseEvent}
 		}
 
 		return false, nil
@@ -105,7 +105,7 @@ func DuplicateEventComparator() ComparatorFunc {
 		newEventType, _ := newEvent.EventType()
 
 		// see if event types match
-		if strings.ToLower(strings.TrimSpace(baseEventType)) == strings.ToLower(strings.TrimSpace(newEventType)) {
+		if strings.EqualFold(strings.TrimSpace(baseEventType), strings.TrimSpace(newEventType)) {
 			latestBootTime, _ := newEvent.BootTime()
 			bootTime, err := baseEvent.BootTime()
 			if err != nil || bootTime <= 0 {

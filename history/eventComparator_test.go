@@ -91,7 +91,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 			incomingEvent: latestEvent,
 			match:         true,
 			expectedErr:   errNewerBootTime,
-			expectedTag:   validation.OutdatedBootTime,
+			expectedTag:   validation.NewerBootTimeFound,
 		},
 		{
 			description: "latest boot-time invalid",
@@ -104,7 +104,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 			},
 			match:       true,
 			expectedErr: errNewerBootTime,
-			expectedTag: validation.OutdatedBootTime,
+			expectedTag: validation.NewerBootTimeFound,
 		},
 	}
 

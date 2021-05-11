@@ -21,7 +21,7 @@ const (
 	InvalidBootTime
 	MissingBootTime
 	OldBootTime
-	OutdatedBootTime
+	NewerBootTimeFound
 	InvalidBootDuration
 	FastBoot
 	InvalidBirthdate
@@ -41,7 +41,7 @@ const (
 	InvalidBootTimeStr      = "invalid_boot_time"
 	MissingBootTimeStr      = "missing_boot_time"
 	OldBootTimeStr          = "suspiciously_old_boot_time"
-	OutdatedBootTimeStr     = "outdated_boot_time"
+	NewerBootTimeFoundStr   = "newer_boot_time_found"
 	InvalidBootDurationStr  = "invalid_boot_duration"
 	FastBootStr             = "suspiciously_fast_boot"
 	InvalidBirthdateStr     = "invalid_birthdate"
@@ -62,7 +62,7 @@ var (
 		InvalidBootTime:      InvalidBootTimeStr,
 		MissingBootTime:      MissingBootTimeStr,
 		OldBootTime:          OldBootTimeStr,
-		OutdatedBootTime:     OutdatedBootTimeStr,
+		NewerBootTimeFound:   NewerBootTimeFoundStr,
 		InvalidBootDuration:  InvalidBootDurationStr,
 		FastBoot:             FastBootStr,
 		InvalidBirthdate:     InvalidBirthdateStr,
@@ -82,7 +82,7 @@ var (
 		InvalidBootTimeStr:      InvalidBootTime,
 		MissingBootTimeStr:      MissingBootTime,
 		OldBootTimeStr:          OldBootTime,
-		OutdatedBootTimeStr:     OutdatedBootTime,
+		NewerBootTimeFoundStr:   NewerBootTimeFound,
 		InvalidBootDurationStr:  InvalidBootDuration,
 		FastBootStr:             FastBoot,
 		InvalidBirthdateStr:     InvalidBirthdate,
