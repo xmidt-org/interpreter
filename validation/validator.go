@@ -75,18 +75,11 @@ func (v Validators) Valid(e interpreter.Event) (bool, error) {
 // BootTimeValidator returns a ValidatorFunc that checks if an
 // Event's boot-time is valid (meaning parsable), greater than 0, and within the
 // bounds deemed valid by the TimeValidation parameters.
-func BootTimeValidator(tv TimeValidation, yearValidator TimeValidation) ValidatorFunc {
+func BootTimeValidator(tv TimeValidation) ValidatorFunc {
 	return func(e interpreter.Event) (bool, error) {
 		bootTime, err := getBootTime(e)
 		if err != nil {
 			return false, err
-		}
-
-		if valid, err := yearValidator.Valid(bootTime); !valid {
-			return false, InvalidBootTimeErr{
-				OriginalErr: err,
-				ErrorTag:    InvalidBootTime,
-			}
 		}
 
 		if valid, err := tv.Valid(bootTime); !valid {

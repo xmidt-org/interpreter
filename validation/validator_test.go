@@ -40,9 +40,8 @@ func TestBootTimeValidator(t *testing.T) {
 	assert.Nil(t, err)
 	currTime := func() time.Time { return now }
 	year := 2015
-	timeValidation := TimeValidator{ValidFrom: -2 * time.Hour, ValidTo: time.Hour, Current: currTime}
-	yearValidation := YearValidator{Year: year, Current: currTime}
-	validator := BootTimeValidator(timeValidation, yearValidation)
+	timeValidation := TimeValidator{ValidFrom: -2 * time.Hour, ValidTo: time.Hour, Current: currTime, MinValidYear: year}
+	validator := BootTimeValidator(timeValidation)
 	tests := []struct {
 		description string
 		event       interpreter.Event
