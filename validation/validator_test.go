@@ -3,7 +3,6 @@ package validation
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"testing"
 	"time"
 
@@ -26,7 +25,8 @@ func TestValidators(t *testing.T) {
 	})
 	valid, err = validators.Valid(testEvent)
 	assert.False(valid)
-	assert.Equal(errors.New("invalid event"), err)
+	assert.Contains(err.Error(), "invalid event")
+	assert.Contains(err.Error(), "another invalid event")
 }
 
 func testValidator(returnBool bool, returnErr error) ValidatorFunc {
@@ -40,9 +40,8 @@ func TestBootTimeValidator(t *testing.T) {
 	assert.Nil(t, err)
 	currTime := func() time.Time { return now }
 	year := 2015
-	timeValidation := TimeValidator{ValidFrom: -2 * time.Hour, ValidTo: time.Hour, Current: currTime}
-	yearValidation := YearValidator{Year: year, Current: currTime}
-	validator := BootTimeValidator(timeValidation, yearValidation)
+	timeValidation := TimeValidator{ValidFrom: -2 * time.Hour, ValidTo: time.Hour, Current: currTime, MinValidYear: year}
+	validator := BootTimeValidator(timeValidation)
 	tests := []struct {
 		description string
 		event       interpreter.Event
@@ -204,48 +203,60 @@ func TestBirthdateValidator(t *testing.T) {
 }
 
 func TestDestinationValidator(t *testing.T) {
-	validator := DestinationValidator(regexp.MustCompile(".*/some-event/.*"))
 	tests := []struct {
-		description string
-		event       interpreter.Event
-		valid       bool
-		expectedErr error
+		description       string
+		event             interpreter.Event
+		searchedEventType string
+		valid             bool
+		expectedErr       error
 	}{
 		{
 			description: "Valid event",
 			event: interpreter.Event{
 				Destination: "event:device-status/mac:112233445566/some-event/random-string",
 			},
-			valid: true,
+			searchedEventType: "some-event",
+			valid:             true,
 		},
 		{
-			description: "event regex mismatch",
+			description: "Valid despite case",
 			event: interpreter.Event{
-				Destination: "some-prefix/device-id/some-event/112233445566/random",
+				Destination: "event:device-status/mac:112233445566/SOME-EVENT/random-string",
 			},
-			valid:       false,
-			expectedErr: ErrNonEvent,
+			searchedEventType: "some-event",
+			valid:             true,
+		},
+		{
+			description: "Valid despite case",
+			event: interpreter.Event{
+				Destination: "event:device-status/mac:112233445566/some-event/random-string",
+			},
+			searchedEventType: "SOME-EVENT",
+			valid:             true,
 		},
 		{
 			description: "event type mismatch",
 			event: interpreter.Event{
 				Destination: "event:device-status/mac:112233445566/random-event/random-string",
 			},
-			valid:       false,
-			expectedErr: ErrInvalidEventType,
+			valid:             false,
+			searchedEventType: "some-event",
+			expectedErr:       ErrEventTypeMismatch,
 		},
 		{
 			description: "Invalid event",
 			event: interpreter.Event{
 				Destination: "/random-event/",
 			},
-			expectedErr: ErrNonEvent,
+			searchedEventType: "some-event",
+			expectedErr:       ErrNonEvent,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
+			validator := DestinationValidator(tc.searchedEventType)
 			valid, err := validator(tc.event)
 			assert.Equal(tc.valid, valid)
 			if tc.expectedErr == nil || err == nil {
@@ -476,6 +487,121 @@ func TestDestinationTimestampValidator(t *testing.T) {
 				assert.Contains(err.Error(), tc.expectedErr.Error())
 				assert.True(errors.As(err, &taggedError))
 				assert.Equal(tc.expectedTag, taggedError.Tag())
+			}
+		})
+	}
+}
+
+func TestBirthdateAlignmentValidator(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+	testDuration := 60 * time.Second
+	val := BirthdateAlignmentValidator(testDuration)
+	tests := []struct {
+		description        string
+		event              interpreter.Event
+		expectedValid      bool
+		expectedTimestamps []int64
+	}{
+		{
+			description: "valid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d", now.Add(5*time.Second).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			expectedValid: true,
+		},
+		{
+			description: "invalid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d", now.Add(5*time.Minute).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			expectedValid:      false,
+			expectedTimestamps: []int64{now.Add(5 * time.Minute).Unix()},
+		},
+		{
+			description: "multiple timestamps valid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d/%d/something/%d", now.Add(5*time.Second).Unix(), now.Add(2*time.Second).Unix(), now.Add(10*time.Second).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			expectedValid: true,
+		},
+		{
+			description: "multiple timestamps invalid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d/%d/something/%d", now.Add(5*time.Minute).Unix(), now.Add(2*time.Minute).Unix(), now.Add(10*time.Second).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			expectedValid:      false,
+			expectedTimestamps: []int64{now.Add(5 * time.Minute).Unix(), now.Add(2 * time.Minute).Unix()},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			valid, err := val(tc.event)
+			assert.Equal(tc.expectedValid, valid)
+			if tc.expectedValid {
+				assert.Nil(err)
+			} else {
+				var birthdateErr InvalidBirthdateErr
+				assert.True(errors.As(err, &birthdateErr))
+				assert.ElementsMatch(tc.expectedTimestamps, birthdateErr.Timestamps)
+				assert.Equal(tc.event.Destination, birthdateErr.Destination)
+				assert.Equal(MisalignedBirthdate, birthdateErr.Tag())
+			}
+		})
+	}
+}
+
+func TestEventTypesValidator(t *testing.T) {
+	val := EventTypeValidator()
+	tests := []struct {
+		description   string
+		event         interpreter.Event
+		expectedValid bool
+		expectedMatch string
+		expectedErr   error
+	}{
+		{
+			description: "valid",
+			event: interpreter.Event{
+				Destination: "event:device-status/mac:112233445566/online",
+			},
+			expectedValid: true,
+		},
+		{
+			description: "invalid",
+			event: interpreter.Event{
+				Destination: "event:device-status/mac:112233445566/random",
+			},
+			expectedValid: false,
+			expectedMatch: "random",
+			expectedErr:   ErrInvalidEventType,
+		},
+		{
+			description: "no type",
+			event: interpreter.Event{
+				Destination: "event:device-status/mac:112233445566",
+			},
+			expectedValid: false,
+			expectedErr:   interpreter.ErrTypeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			valid, err := val.Valid(tc.event)
+			assert.Equal(tc.expectedValid, valid)
+			if tc.expectedErr != nil {
+				var invalidTypeErr InvalidDestinationErr
+				assert.True(errors.Is(err, tc.expectedErr))
+				assert.True(errors.As(err, &invalidTypeErr))
+				assert.Equal(tc.expectedMatch, invalidTypeErr.EventType)
 			}
 		})
 	}

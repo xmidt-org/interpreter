@@ -19,19 +19,15 @@ package history
 
 import (
 	"errors"
-	"regexp"
+	"strings"
 
 	"github.com/xmidt-org/interpreter"
+	"github.com/xmidt-org/interpreter/validation"
 )
 
 var (
 	errNewerBootTime  = errors.New("newer boot-time found")
 	errDuplicateEvent = errors.New("duplicate event found")
-)
-
-const (
-	newerBootTimeReason  = "newer_boottime_found"
-	duplicateEventReason = "duplicate_event_found"
 )
 
 // Comparator compares two events and returns true if the condition has been matched.
@@ -81,7 +77,7 @@ func OlderBootTimeComparator() ComparatorFunc {
 
 		// if this event has a boot-time more recent than the latest one, return an error
 		if bootTime > latestBootTime {
-			return true, ComparatorErr{OriginalErr: errNewerBootTime, ErrLabel: newerBootTimeReason, ComparisonEvent: baseEvent}
+			return true, ComparatorErr{OriginalErr: errNewerBootTime, ErrorTag: validation.NewerBootTimeFound, ComparisonEvent: baseEvent}
 		}
 
 		return false, nil
@@ -92,17 +88,24 @@ func OlderBootTimeComparator() ComparatorFunc {
 // DuplicateEventComparator returns a ComparatorFunc to check and see if newEvent is a duplicate. A duplicate event
 // in this case is defined as sharing the same event type and boot-time as the base event while having a birthdate
 // that is equal to or newer than baseEvent's birthdate. If newEvent is found to be a duplicate, it returns true and
-// an error. DuplicateEventComparator checks that newEvent and baseEvent match the eventType.
-// It assumes that newEvent has a valid boot-time and does not do any error-checking of newEvent's boot-time.
-func DuplicateEventComparator(eventType *regexp.Regexp) ComparatorFunc {
+// an error. It assumes that newEvent has a valid boot-time and event-type and does not do any error-checking
+// of newEvent's boot-time or event type.
+func DuplicateEventComparator() ComparatorFunc {
 	return func(baseEvent interpreter.Event, newEvent interpreter.Event) (bool, error) {
 		// baseEvent is newEvent, no need to compare boot-times
 		if baseEvent.TransactionUUID == newEvent.TransactionUUID {
 			return false, nil
 		}
 
-		// see if event is the type we are looking for
-		if eventType.MatchString(baseEvent.Destination) && eventType.MatchString(newEvent.Destination) {
+		baseEventType, err := baseEvent.EventType()
+		if err != nil {
+			return false, nil
+		}
+
+		newEventType, _ := newEvent.EventType()
+
+		// see if event types match
+		if strings.EqualFold(strings.TrimSpace(baseEventType), strings.TrimSpace(newEventType)) {
 			latestBootTime, _ := newEvent.BootTime()
 			bootTime, err := baseEvent.BootTime()
 			if err != nil || bootTime <= 0 {
@@ -112,7 +115,7 @@ func DuplicateEventComparator(eventType *regexp.Regexp) ComparatorFunc {
 			// If the boot-time is the same as the latestBootTime, and the birthdate is older or equal,
 			// this means that newEvent is a duplicate.
 			if bootTime == latestBootTime && baseEvent.Birthdate <= newEvent.Birthdate {
-				return true, ComparatorErr{OriginalErr: errDuplicateEvent, ErrLabel: duplicateEventReason, ComparisonEvent: baseEvent}
+				return true, ComparatorErr{OriginalErr: errDuplicateEvent, ErrorTag: validation.DuplicateEvent, ComparisonEvent: baseEvent}
 			}
 		}
 

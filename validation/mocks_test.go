@@ -1,16 +1,16 @@
 package validation
 
 type testError struct {
-	err   error
-	label string
+	err error
+	tag Tag
 }
 
 func (t testError) Error() string {
 	return t.err.Error()
 }
 
-func (t testError) ErrorLabel() string {
-	return t.label
+func (t testError) Tag() Tag {
+	return t.tag
 }
 
 func (t testError) Unwrap() error {

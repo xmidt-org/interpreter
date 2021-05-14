@@ -10,38 +10,88 @@ func (t Tag) String() string {
 		return val
 	}
 
-	return "unknown"
+	return UnknownStr
 }
 
 const (
 	Unknown Tag = iota
 	Pass
+	MultipleTags
 	InconsistentDeviceID
+	InvalidBootTime
 	MissingBootTime
 	OldBootTime
-	InvalidBootTime
+	NewerBootTimeFound
+	InvalidBootDuration
 	FastBoot
+	InvalidBirthdate
+	MisalignedBirthdate
+	InvalidDestination
+	NonEvent
+	InvalidEventType
+	EventTypeMismatch
+	DuplicateEvent
+)
+
+const (
+	UnknownStr              = "unknown"
+	PassStr                 = "pass"
+	MultipleTagsStr         = "multiple_tags"
+	InconsistentDeviceIDStr = "inconsistent_device_id"
+	InvalidBootTimeStr      = "invalid_boot_time"
+	MissingBootTimeStr      = "missing_boot_time"
+	OldBootTimeStr          = "suspiciously_old_boot_time"
+	NewerBootTimeFoundStr   = "newer_boot_time_found"
+	InvalidBootDurationStr  = "invalid_boot_duration"
+	FastBootStr             = "suspiciously_fast_boot"
+	InvalidBirthdateStr     = "invalid_birthdate"
+	MisalignedBirthdateStr  = "misaligned_birthdate"
+	InvalidDestinationStr   = "invalid_destination"
+	NonEventStr             = "not_an_event"
+	InvalidEventTypeStr     = "invalid_event_type"
+	EventTypeMismatchStr    = "event_type_mismatch"
+	DuplicateEventStr       = "duplicate_event"
 )
 
 var (
 	tagToString = map[Tag]string{
-		Pass:                 "pass",
-		InconsistentDeviceID: "inconsistent_device_id",
-		MissingBootTime:      "missing_boot_time",
-		OldBootTime:          "old_boot_time",
-		InvalidBootTime:      "invalid_boot_time",
-		FastBoot:             "suspiciously_fast_boot",
-		Unknown:              "unknown",
+		Unknown:              UnknownStr,
+		Pass:                 PassStr,
+		MultipleTags:         MultipleTagsStr,
+		InconsistentDeviceID: InconsistentDeviceIDStr,
+		InvalidBootTime:      InvalidBootTimeStr,
+		MissingBootTime:      MissingBootTimeStr,
+		OldBootTime:          OldBootTimeStr,
+		NewerBootTimeFound:   NewerBootTimeFoundStr,
+		InvalidBootDuration:  InvalidBootDurationStr,
+		FastBoot:             FastBootStr,
+		InvalidBirthdate:     InvalidBirthdateStr,
+		MisalignedBirthdate:  MisalignedBirthdateStr,
+		InvalidDestination:   InvalidDestinationStr,
+		NonEvent:             NonEventStr,
+		InvalidEventType:     InvalidEventTypeStr,
+		EventTypeMismatch:    EventTypeMismatchStr,
+		DuplicateEvent:       DuplicateEventStr,
 	}
 
 	stringToTag = map[string]Tag{
-		"pass":                   Pass,
-		"inconsistent_device_id": InconsistentDeviceID,
-		"missing_boot_time":      MissingBootTime,
-		"old_boot_time":          OldBootTime,
-		"invalid_boot_time":      InvalidBootTime,
-		"suspiciously_fast_boot": FastBoot,
-		"unknown":                Unknown,
+		UnknownStr:              Unknown,
+		PassStr:                 Pass,
+		MultipleTagsStr:         MultipleTags,
+		InconsistentDeviceIDStr: InconsistentDeviceID,
+		InvalidBootTimeStr:      InvalidBootTime,
+		MissingBootTimeStr:      MissingBootTime,
+		OldBootTimeStr:          OldBootTime,
+		NewerBootTimeFoundStr:   NewerBootTimeFound,
+		InvalidBootDurationStr:  InvalidBootDuration,
+		FastBootStr:             FastBoot,
+		InvalidBirthdateStr:     InvalidBirthdate,
+		MisalignedBirthdateStr:  MisalignedBirthdate,
+		InvalidDestinationStr:   InvalidDestination,
+		NonEventStr:             NonEvent,
+		InvalidEventTypeStr:     InvalidEventType,
+		EventTypeMismatchStr:    EventTypeMismatch,
+		DuplicateEventStr:       DuplicateEvent,
 	}
 )
 

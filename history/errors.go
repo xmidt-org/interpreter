@@ -18,15 +18,11 @@
 package history
 
 import (
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/xmidt-org/interpreter"
-)
-
-const (
-	comparatorErrLabel = "comparator_err"
-	finderErrLabel     = "event_finder_err"
+	"github.com/xmidt-org/interpreter/validation"
 )
 
 // ComparatorErr is used when an error is found with a trigger event
@@ -34,7 +30,7 @@ const (
 type ComparatorErr struct {
 	OriginalErr     error
 	ComparisonEvent interpreter.Event
-	ErrLabel        string
+	ErrorTag        validation.Tag
 }
 
 func (e ComparatorErr) Error() string {
@@ -49,12 +45,17 @@ func (e ComparatorErr) Unwrap() error {
 	return e.OriginalErr
 }
 
-func (e ComparatorErr) ErrorLabel() string {
-	if len(e.ErrLabel) > 0 {
-		return strings.ReplaceAll(e.ErrLabel, " ", "_")
+func (e ComparatorErr) Tag() validation.Tag {
+	if e.ErrorTag != validation.Unknown {
+		return e.ErrorTag
 	}
 
-	return comparatorErrLabel
+	var taggedErr validation.TaggedError
+	if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErr) {
+		return taggedErr.Tag()
+	}
+
+	return e.ErrorTag
 }
 
 // Event returns the event in history that caused the error to be thrown.
@@ -65,7 +66,7 @@ func (e ComparatorErr) Event() interpreter.Event {
 // EventFinderErr is an error used by EventFinder.
 type EventFinderErr struct {
 	OriginalErr error
-	ErrLabel    string
+	ErrorTag    validation.Tag
 }
 
 func (e EventFinderErr) Error() string {
@@ -80,10 +81,15 @@ func (e EventFinderErr) Unwrap() error {
 	return e.OriginalErr
 }
 
-func (e EventFinderErr) ErrorLabel() string {
-	if len(e.ErrLabel) > 0 {
-		return strings.ReplaceAll(e.ErrLabel, " ", "_")
+func (e EventFinderErr) Tag() validation.Tag {
+	if e.ErrorTag != validation.Unknown {
+		return e.ErrorTag
 	}
 
-	return finderErrLabel
+	var taggedErr validation.TaggedError
+	if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErr) {
+		return taggedErr.Tag()
+	}
+
+	return e.ErrorTag
 }

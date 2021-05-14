@@ -31,6 +31,12 @@ import (
 
 const (
 	BootTimeKey = "/boot-time"
+
+	TypeSubexpName      = "type"
+	IDSubexpName        = "ID"
+	AuthoritySubexpName = "authority"
+	EventSubexpName     = "event"
+	SchemeSubexpName    = "scheme"
 )
 
 var (
@@ -38,13 +44,26 @@ var (
 	ErrBirthdateParse   = errors.New("unable to parse birthdate from payload")
 	ErrBootTimeParse    = errors.New("unable to parse boot-time")
 	ErrBootTimeNotFound = errors.New("boot-time not found")
+	ErrEventRegex       = errors.New("event regex is wrong")
 	ErrTypeNotFound     = errors.New("type not found")
 
 	// EventRegex is the regex that an event's destination must match in order to parse the device id properly.
-	EventRegex = regexp.MustCompile(`^(?P<event>[^/]+)/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^/]+))/(?P<type>[^/\s]+)`)
+	EventRegex = regexp.MustCompile(fmt.Sprintf(`^(?P<%s>[^/]+)/(?P<%s>(?P<%s>(?i)mac|uuid|dns|serial):(?P<%s>[^/]+))/(?P<%s>[^/\s]+)`, EventSubexpName, IDSubexpName, SchemeSubexpName, AuthoritySubexpName, TypeSubexpName))
 
 	// DeviceIDRegex is used to parse a device id from anywhere.
-	DeviceIDRegex = regexp.MustCompile(`(?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^/]+)`)
+	DeviceIDRegex = regexp.MustCompile(fmt.Sprintf(`(?P<%s>(?i)mac|uuid|dns|serial):(?P<%s>[^/]+)`, SchemeSubexpName, AuthoritySubexpName))
+
+	// EventTypes lists all of the possible device status events.
+	EventTypes = map[string]bool{
+		"reboot-pending":              true,
+		"offline":                     true,
+		"online":                      true,
+		"operational":                 true,
+		"fully-manageable":            true,
+		"non-operational":             true,
+		"firmware-download-started":   true,
+		"firmware-download-completed": true,
+	}
 )
 
 // Event is the struct that contains the wrp.Message fields along with the birthdate
@@ -113,24 +132,26 @@ func (e Event) BootTime() (int64, error) {
 	return bootTime, err
 }
 
-// DeviceID gets the device id based on the event regex.
+// DeviceID gets the device id from the event's destination based on the event regex.
 func (e Event) DeviceID() (string, error) {
+	index := EventRegex.SubexpIndex(IDSubexpName)
 	match := EventRegex.FindStringSubmatch(e.Destination)
-	if len(match) < 3 {
+	if len(match) < index+1 {
 		return "", ErrParseDeviceID
 	}
 
-	return match[2], nil
+	return match[index], nil
 }
 
 // EventType returns the event type from the event's destination.
 func (e Event) EventType() (string, error) {
+	index := EventRegex.SubexpIndex(TypeSubexpName)
 	match := EventRegex.FindStringSubmatch(e.Destination)
-	if len(match) < 6 {
+	if len(match) < index+1 {
 		return "", ErrTypeNotFound
 	}
 
-	return match[5], nil
+	return match[index], nil
 }
 
 func getBirthDate(payload []byte) (time.Time, bool) {

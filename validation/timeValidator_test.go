@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -13,13 +12,15 @@ func TestValid(t *testing.T) {
 	assert.Nil(t, err)
 	currFunc := func() time.Time { return now }
 	tests := []struct {
-		description string
-		validFrom   time.Duration
-		validTo     time.Duration
-		testTime    time.Time
-		currTime    func() time.Time
-		expectedRes bool
-		expectedErr error
+		description  string
+		validFrom    time.Duration
+		validTo      time.Duration
+		minValidYear int
+		maxValidYear int
+		testTime     time.Time
+		currTime     func() time.Time
+		expectedRes  bool
+		expectedErr  error
 	}{
 		{
 			description: "Valid Time",
@@ -99,67 +100,34 @@ func TestValid(t *testing.T) {
 			expectedRes: false,
 			expectedErr: ErrFutureDate,
 		},
+		{
+			description:  "Past minValidYear",
+			minValidYear: 2015,
+			currTime:     currFunc,
+			testTime:     time.Date(2014, now.Month(), now.Day(), 0, 0, 0, 0, time.Local),
+			expectedRes:  false,
+			expectedErr:  ErrInvalidYear,
+		},
+		{
+			description:  "Past maxValidYear",
+			maxValidYear: 2018,
+			currTime:     currFunc,
+			testTime:     now,
+			expectedRes:  false,
+			expectedErr:  ErrInvalidYear,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			tv := TimeValidator{Current: tc.currTime, ValidFrom: tc.validFrom, ValidTo: tc.validTo}
+			tv := TimeValidator{Current: tc.currTime, ValidFrom: tc.validFrom, ValidTo: tc.validTo, MinValidYear: tc.minValidYear, MaxValidYear: tc.maxValidYear}
 			valid, err := tv.Valid(tc.testTime)
-			assert.Equal(tc.expectedErr, err)
 			assert.Equal(tc.expectedRes, valid)
-		})
-	}
-}
-
-func TestYearValidator(t *testing.T) {
-	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
-	assert.Nil(t, err)
-	currTime := func() time.Time { return now }
-	testYear := 2015
-
-	tests := []struct {
-		date          time.Time
-		expectedValid bool
-		expectedErr   error
-		validation    YearValidator
-	}{
-		{
-			date:          time.Date(testYear, now.Month(), now.Day(), 0, 0, 0, 1, time.Local),
-			expectedValid: true,
-			validation:    YearValidator{Year: testYear, Current: currTime},
-		},
-		{
-			date:          time.Date(testYear, now.Month(), now.Day(), 5, 0, 0, 1, time.Local),
-			expectedValid: true,
-			validation:    YearValidator{Year: testYear, Current: currTime},
-		},
-		{
-			date:          time.Date(testYear, now.Month(), now.Add(-24*time.Hour).Day(), 0, 0, 0, 0, time.Local),
-			expectedValid: false,
-			validation:    YearValidator{Year: testYear, Current: currTime},
-			expectedErr:   ErrInvalidYear,
-		},
-		{
-			date:          now,
-			expectedValid: true,
-			validation:    YearValidator{Year: testYear, Current: currTime},
-		},
-		{
-			date:          now,
-			expectedValid: false,
-			validation:    YearValidator{Year: testYear},
-			expectedErr:   ErrNilTimeFunc,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.date.String(), func(t *testing.T) {
-			assert := assert.New(t)
-			valid, err := tc.validation.Valid(tc.date)
-			assert.Equal(tc.expectedValid, valid)
-			if !tc.expectedValid {
-				assert.True(errors.Is(err, tc.expectedErr))
+			if err == nil || tc.expectedErr == nil {
+				assert.Equal(tc.expectedErr, err)
+			} else {
+				assert.Contains(err.Error(), tc.expectedErr.Error())
 			}
 		})
 	}

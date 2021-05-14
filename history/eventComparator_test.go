@@ -3,7 +3,6 @@ package history
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"testing"
 	"time"
 
@@ -51,6 +50,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 		incomingEvent interpreter.Event
 		match         bool
 		expectedErr   error
+		expectedTag   validation.Tag
 	}{
 		{
 			description: "valid event",
@@ -91,6 +91,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 			incomingEvent: latestEvent,
 			match:         true,
 			expectedErr:   errNewerBootTime,
+			expectedTag:   validation.NewerBootTimeFound,
 		},
 		{
 			description: "latest boot-time invalid",
@@ -103,6 +104,7 @@ func TestOlderBootTimeComparator(t *testing.T) {
 			},
 			match:       true,
 			expectedErr: errNewerBootTime,
+			expectedTag: validation.NewerBootTimeFound,
 		},
 	}
 
@@ -119,9 +121,9 @@ func TestOlderBootTimeComparator(t *testing.T) {
 						err, tc.expectedErr),
 				)
 
-				var logError validation.MetricsLogError
-				assert.True(errors.As(err, &logError))
-				assert.Equal(newerBootTimeReason, logError.ErrorLabel())
+				var tagError validation.TaggedError
+				assert.True(errors.As(err, &tagError))
+				assert.Equal(tc.expectedTag, tagError.Tag())
 			}
 		})
 	}
@@ -130,26 +132,26 @@ func TestOlderBootTimeComparator(t *testing.T) {
 func TestDuplicateEventComparator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
-	destRegex := regexp.MustCompile(".*/online")
 	latestEvent := interpreter.Event{
-		Destination:     "mac:112233445566/online",
+		Destination:     "event:device-status/mac:112233445566/online",
 		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 		TransactionUUID: "test",
 		Birthdate:       now.UnixNano(),
 	}
 
-	comparator := DuplicateEventComparator(destRegex)
+	comparator := DuplicateEventComparator()
 	tests := []struct {
 		description   string
 		historyEvent  interpreter.Event
 		incomingEvent interpreter.Event
 		match         bool
 		expectedErr   error
+		expectedTag   validation.Tag
 	}{
 		{
 			description: "valid event",
 			historyEvent: interpreter.Event{
-				Destination: "mac:112233445566/online",
+				Destination: "event:device-status/mac:112233445566/online",
 				Metadata: map[string]string{
 					interpreter.BootTimeKey: fmt.Sprint(now.Add(-30 * time.Minute).Unix()),
 				},
@@ -162,7 +164,7 @@ func TestDuplicateEventComparator(t *testing.T) {
 		{
 			description: "same event uuid",
 			historyEvent: interpreter.Event{
-				Destination: "mac:112233445566/online",
+				Destination: "event:device-status/mac:112233445566/online",
 				Metadata: map[string]string{
 					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
 				},
@@ -188,7 +190,7 @@ func TestDuplicateEventComparator(t *testing.T) {
 		{
 			description: "new event type mismatch",
 			historyEvent: interpreter.Event{
-				Destination: "mac:112233445566/online",
+				Destination: "event:device-status/mac:112233445566/online",
 				Metadata: map[string]string{
 					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
 				},
@@ -208,7 +210,7 @@ func TestDuplicateEventComparator(t *testing.T) {
 		{
 			description: "boot-time missing",
 			historyEvent: interpreter.Event{
-				Destination:     "mac:112233445566/online",
+				Destination:     "event:device-status/mac:112233445566/online",
 				Metadata:        map[string]string{},
 				TransactionUUID: "abc",
 				Birthdate:       now.UnixNano(),
@@ -219,7 +221,7 @@ func TestDuplicateEventComparator(t *testing.T) {
 		{
 			description: "duplicate found, older birthdate",
 			historyEvent: interpreter.Event{
-				Destination:     "mac:112233445566/online",
+				Destination:     "event:device-status/mac:112233445566/online",
 				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				TransactionUUID: "abc",
 				Birthdate:       now.Add(-1 * time.Minute).UnixNano(),
@@ -227,11 +229,12 @@ func TestDuplicateEventComparator(t *testing.T) {
 			incomingEvent: latestEvent,
 			match:         true,
 			expectedErr:   errDuplicateEvent,
+			expectedTag:   validation.DuplicateEvent,
 		},
 		{
 			description: "duplicate found, same birthdate",
 			historyEvent: interpreter.Event{
-				Destination:     "mac:112233445566/online",
+				Destination:     "event:device-status/mac:112233445566/online",
 				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				TransactionUUID: "abc",
 				Birthdate:       now.UnixNano(),
@@ -239,11 +242,12 @@ func TestDuplicateEventComparator(t *testing.T) {
 			incomingEvent: latestEvent,
 			match:         true,
 			expectedErr:   errDuplicateEvent,
+			expectedTag:   validation.DuplicateEvent,
 		},
 		{
 			description: "duplicate found, later birthdate",
 			historyEvent: interpreter.Event{
-				Destination:     "mac:112233445566/online",
+				Destination:     "event:device-status/mac:112233445566/online",
 				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
 				TransactionUUID: "abc",
 				Birthdate:       now.Add(time.Minute).UnixNano(),
@@ -278,9 +282,9 @@ func TestDuplicateEventComparator(t *testing.T) {
 					fmt.Errorf("error [%v] doesn't contain error [%v] in its err chain",
 						err, tc.expectedErr),
 				)
-				var logError validation.MetricsLogError
-				assert.True(errors.As(err, &logError))
-				assert.Equal(duplicateEventReason, logError.ErrorLabel())
+				var tagError validation.TaggedError
+				assert.True(errors.As(err, &tagError))
+				assert.Equal(tc.expectedTag, tagError.Tag())
 			}
 		})
 	}
