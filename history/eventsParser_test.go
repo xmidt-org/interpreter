@@ -229,6 +229,7 @@ func (suite *CycleTestSuite) TestInvalidEvents() {
 	suite.Equal(expectedEvents, results)
 	var resultErrs validation.Errors
 	suite.True(errors.As(err, &resultErrs))
+	suite.Equal(len(results), len(resultErrs))
 	for _, e := range resultErrs {
 		var eventErr validation.EventWithError
 		suite.True(errors.As(e, &eventErr))
