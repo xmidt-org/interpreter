@@ -53,6 +53,9 @@ var (
 	// DeviceIDRegex is used to parse a device id from anywhere.
 	DeviceIDRegex = regexp.MustCompile(fmt.Sprintf(`(?P<%s>(?i)mac|uuid|dns|serial):(?P<%s>[^/]+)`, SchemeSubexpName, AuthoritySubexpName))
 
+	OfflineEventType       = "offline"
+	RebootPendingEventType = "reboot-pending"
+
 	// EventTypes lists all of the possible device status events.
 	EventTypes = map[string]bool{
 		"reboot-pending":              true,
