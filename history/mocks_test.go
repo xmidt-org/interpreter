@@ -24,15 +24,6 @@ func (m *mockValidator) Valid(e interpreter.Event) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-type mockEventsValidator struct {
-	mock.Mock
-}
-
-func (m *mockEventsValidator) Valid(index int, event interpreter.Event, events []interpreter.Event) (bool, error) {
-	args := m.Called(index, event, events)
-	return args.Bool(0), args.Error(1)
-}
-
 type testTaggedError struct {
 	tag  validation.Tag
 	tags []validation.Tag

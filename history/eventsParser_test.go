@@ -87,14 +87,6 @@ func (suite *CycleTestSuite) setEventDestination(eventID string, destination str
 	return interpreter.Event{}
 }
 
-// for debugging purposes
-func printEventArray(events []interpreter.Event, description string) {
-	fmt.Printf("%s----------------------------------------\n", description)
-	for _, event := range events {
-		fmt.Printf("Destination: %s, TransactionID: %s\n", event.Destination, event.TransactionUUID)
-	}
-}
-
 func (suite *CycleTestSuite) TestValid() {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	suite.Nil(err)
@@ -132,7 +124,7 @@ func (suite *CycleTestSuite) TestValid() {
 	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
 	expectedEvents := suite.parseEvents(fromEvent, toEvent)
 	parser := BootCycleParser(mockComparator, mockVal)
-	results, err := parser(suite.Events, toEvent)
+	results, err := parser.Parse(suite.Events, toEvent)
 	suite.Equal(expectedEvents, results)
 	suite.Nil(err)
 }
@@ -174,7 +166,7 @@ func (suite *CycleTestSuite) TestNoRebootPendingEvent() {
 	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
 	expectedEvents := suite.parseEvents(fromEvent, toEvent)
 	parser := BootCycleParser(mockComparator, mockVal)
-	results, err := parser(suite.Events, toEvent)
+	results, err := parser.Parse(suite.Events, toEvent)
 	suite.Equal(expectedEvents, results)
 	suite.Nil(err)
 }
@@ -225,7 +217,7 @@ func (suite *CycleTestSuite) TestInvalidEvents() {
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 	expectedEvents := suite.parseEvents(fromEvent, toEvent)
 	parser := BootCycleParser(mockComparator, mockVal)
-	results, err := parser(suite.Events, toEvent)
+	results, err := parser.Parse(suite.Events, toEvent)
 	suite.Equal(expectedEvents, results)
 	var resultErrs validation.Errors
 	suite.True(errors.As(err, &resultErrs))
@@ -272,36 +264,63 @@ func (suite *CycleTestSuite) TestInvalidComparator() {
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(true, testErr)
 	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
 	parser := BootCycleParser(mockComparator, mockVal)
-	results, err := parser(suite.Events, toEvent)
+	results, err := parser.Parse(suite.Events, toEvent)
 	suite.Empty(results)
 	suite.True(errors.Is(err, testErr))
+}
+
+func (suite *CycleTestSuite) TestCurrentEventInvalidBootTime() {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	suite.Nil(err)
+
+	futureBootTime := now.Add(1 * time.Hour)
+	currentBootTime := now
+	prevBootTime := now.Add(-1 * time.Hour)
+	olderBootTime := now.Add(-2 * time.Hour)
+	bootTimes := []testEventSetup{
+		testEventSetup{
+			bootTime:  currentBootTime,
+			numEvents: 3,
+		},
+		testEventSetup{
+			bootTime:  olderBootTime,
+			numEvents: 3,
+		},
+		testEventSetup{
+			bootTime:  prevBootTime,
+			numEvents: 4,
+		},
+		testEventSetup{
+			bootTime:  futureBootTime,
+			numEvents: 2,
+		},
+	}
+
+	suite.createEvents(bootTimes...)
+	tests := []interpreter.Event{
+		interpreter.Event{}, interpreter.Event{Metadata: map[string]string{interpreter.BootTimeKey: "-1"}},
+	}
+
+	mockVal := new(mockValidator)
+	mockComparator := new(mockComparator)
+
+	for _, event := range tests {
+		parser := BootCycleParser(mockComparator, mockVal)
+		results, err := parser.Parse(suite.Events, event)
+		suite.Empty(results)
+		var invalidBootTimeErr validation.InvalidBootTimeErr
+		suite.True(errors.As(err, &invalidBootTimeErr))
+	}
+
 }
 
 func TestBootCycleParser(t *testing.T) {
 	suite.Run(t, new(CycleTestSuite))
 }
 
-type test struct {
-	currentEvent   interpreter.Event
-	comparator     Comparator
-	validator      validation.Validator
-	eventsList     []interpreter.Event
-	expectedEvents []string
-	expectedErr    error
-}
-
-func testBootCycleParserHelper(t *testing.T, testParams test) {
-	assert := assert.New(t)
-	parser := BootCycleParser(testParams.comparator, testParams.validator)
-	events, err := parser(testParams.eventsList, testParams.currentEvent)
-	assert.ElementsMatch(events, testParams.expectedEvents)
-	assert.Equal(testParams.expectedErr, err)
-}
-
 func TestRebootEventsParser(t *testing.T) {
-	assert := assert.New(t)
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
-	assert.Nil(err)
+	assert.Nil(t, err)
 	rebootPendingEvent := interpreter.Event{
 		TransactionUUID: "1",
 		Destination:     "event:device-status/mac:112233445566/reboot-pending",
@@ -338,32 +357,47 @@ func TestRebootEventsParser(t *testing.T) {
 		},
 	}
 
-	expectedEventIDs := map[string]bool{
-		rebootPendingEvent.TransactionUUID: true,
-		"2":                                true,
-		"3":                                true,
-		"4":                                true,
-		"5":                                true,
+	tests := []struct {
+		description      string
+		events           []interpreter.Event
+		expectedEventIDs map[string]bool
+	}{
+		{
+			description: "with reboot-pending event",
+			events:      append(events, rebootPendingEvent),
+			expectedEventIDs: map[string]bool{
+				rebootPendingEvent.TransactionUUID: true,
+				"2":                                true,
+				"3":                                true,
+				"4":                                true,
+				"5":                                true,
+			},
+		},
+		{
+			description: "without reboot-pending event",
+			events:      events,
+			expectedEventIDs: map[string]bool{
+				"3": true,
+				"4": true,
+				"5": true,
+			},
+		},
+		{
+			description: "empty list",
+			events:      []interpreter.Event{},
+		},
 	}
 
-	testEvents := append(events, rebootPendingEvent)
-	cycle := rebootEventsParser(testEvents)
-	assert.Equal(len(expectedEventIDs), len(cycle))
-	for _, event := range cycle {
-		assert.True(expectedEventIDs[event.TransactionUUID])
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			cycle := rebootEventsParser(tc.events)
+			assert.Equal(len(tc.expectedEventIDs), len(cycle))
+			for _, event := range cycle {
+				assert.True(tc.expectedEventIDs[event.TransactionUUID])
+			}
+		})
 	}
-
-	expectedEventIDs = map[string]bool{
-		"3": true,
-		"4": true,
-		"5": true,
-	}
-	cycle2 := rebootEventsParser(events)
-	assert.Equal(len(expectedEventIDs), len(cycle2))
-	for _, event := range cycle2 {
-		assert.True(expectedEventIDs[event.TransactionUUID])
-	}
-
 }
 
 type testEventValidation struct {
@@ -401,11 +435,11 @@ func TestValidateEvents(t *testing.T) {
 		},
 	}
 
-	var events []interpreter.Event
+	events := make([]interpreter.Event, len(tests))
 	var allErrors validation.Errors
-	for _, test := range tests {
+	for i, test := range tests {
 		mockVal.On("Valid", test.event).Return(test.valid, test.err)
-		events = append(events, test.event)
+		events[i] = test.event
 		if !test.valid {
 			allErrors = append(allErrors, validation.EventWithError{
 				Event:       test.event,

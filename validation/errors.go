@@ -102,10 +102,10 @@ type EventWithError struct {
 
 func (e EventWithError) Error() string {
 	if len(e.Event.TransactionUUID) > 0 {
-		return fmt.Sprintf("Event ID: %s; error: %v", e.Event.TransactionUUID, e.OriginalErr)
+		return fmt.Sprintf("event id: %s; error: %v", e.Event.TransactionUUID, e.OriginalErr)
 	}
 
-	return fmt.Sprintf("Missing event id. error: %v", e.OriginalErr)
+	return fmt.Sprintf("event id: Missing; error: %v", e.OriginalErr)
 }
 
 func (e EventWithError) Unwrap() error {

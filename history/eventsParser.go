@@ -7,12 +7,12 @@ import (
 	"github.com/xmidt-org/interpreter/validation"
 )
 
-// EventsParser parses the relevent events from a device's history of events and returns those events.
+// EventsParser parses the relevant events from a device's history of events and returns those events.
 type EventsParser interface {
 	Parse(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error)
 }
 
-// EventsParserFunc is a function that returns the relevent events from a slice of events.
+// EventsParserFunc is a function that returns the relevant events from a slice of events.
 type EventsParserFunc func([]interpreter.Event, interpreter.Event) ([]interpreter.Event, error)
 
 // Parse implements the EventsParser interface.

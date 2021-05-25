@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/xmidt-org/interpreter"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -255,6 +257,67 @@ func TestBootDurationErr(t *testing.T) {
 			assert.Contains(err.Error(), "boot duration error")
 			assert.Equal(tc.underlyingErr, err.Unwrap())
 			assert.Equal(tc.expectedTag, err.Tag())
+		})
+	}
+}
+
+func TestEventWithError(t *testing.T) {
+	err := errors.New("test")
+	tests := []struct {
+		description   string
+		underlyingErr error
+		event         interpreter.Event
+		expectedTag   Tag
+		expectedTags  []Tag
+	}{
+		{
+			description:   "with event and err",
+			underlyingErr: err,
+			event:         interpreter.Event{TransactionUUID: "test"},
+			expectedTag:   Unknown,
+		},
+		{
+			description: "tagged err",
+			underlyingErr: testError{
+				err: err,
+				tag: 2000,
+			},
+			event:       interpreter.Event{TransactionUUID: "test"},
+			expectedTag: 2000,
+		},
+		{
+			description: "multiple tags",
+			underlyingErr: testError{
+				err:  err,
+				tags: []Tag{2000, 3000, 4000},
+			},
+			event:        interpreter.Event{TransactionUUID: "test"},
+			expectedTag:  MultipleTags,
+			expectedTags: []Tag{2000, 3000, 4000},
+		},
+		{
+			description: "No event",
+			underlyingErr: testError{
+				err:  err,
+				tags: []Tag{2000, 3000, 4000},
+			},
+			expectedTag:  MultipleTags,
+			expectedTags: []Tag{2000, 3000, 4000},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			resultingErr := EventWithError{
+				Event:       tc.event,
+				OriginalErr: tc.underlyingErr,
+			}
+			assert.Contains(resultingErr.Error(), "event id")
+			assert.Equal(tc.underlyingErr, resultingErr.Unwrap())
+			assert.Equal(resultingErr.Event, tc.event)
+			assert.Equal(tc.expectedTag, resultingErr.Tag())
+			assert.Equal(tc.expectedTags, resultingErr.Tags())
 		})
 	}
 }
