@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/xmidt-org/interpreter"
 )
 
 // TaggedError is an optional interface for errors to implement if the error should include a Tag.
@@ -90,6 +92,46 @@ func (e Errors) Tags() []Tag {
 	}
 
 	return tags
+}
+
+// EventWithError is a type of error that connects errors with a specific event.
+type EventWithError struct {
+	Event       interpreter.Event
+	OriginalErr error
+}
+
+func (e EventWithError) Error() string {
+	if len(e.Event.TransactionUUID) > 0 {
+		return fmt.Sprintf("event id: %s; error: %v", e.Event.TransactionUUID, e.OriginalErr)
+	}
+
+	return fmt.Sprintf("event id: Missing; error: %v", e.OriginalErr)
+}
+
+func (e EventWithError) Unwrap() error {
+	return e.OriginalErr
+}
+
+// Tag implements the TaggedError interface, returning the tag of the underlying error if
+// the underlying error is a TaggedError.
+func (e EventWithError) Tag() Tag {
+	var taggedErr TaggedError
+	if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErr) {
+		return taggedErr.Tag()
+	}
+
+	return Unknown
+}
+
+// Tags implements the TaggedError interface, returning the tags of the underlying error if
+// the underlying error is a TaggedErrors.
+func (e EventWithError) Tags() []Tag {
+	var taggedErrs TaggedErrors
+	if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErrs) {
+		return taggedErrs.Tags()
+	}
+
+	return nil
 }
 
 // InvalidEventErr is a Tag Error that wraps an underlying error.

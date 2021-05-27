@@ -25,7 +25,8 @@ func (m *mockValidator) Valid(e interpreter.Event) (bool, error) {
 }
 
 type testTaggedError struct {
-	tag validation.Tag
+	tag  validation.Tag
+	tags []validation.Tag
 }
 
 func (e testTaggedError) Error() string {
@@ -34,4 +35,8 @@ func (e testTaggedError) Error() string {
 
 func (e testTaggedError) Tag() validation.Tag {
 	return e.tag
+}
+
+func (e testTaggedError) Tags() []validation.Tag {
+	return e.tags
 }
