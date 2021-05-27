@@ -1,0 +1,23 @@
+codex:
+  address: "http://localhost:7000"
+  maxRetryCount: 3
+  jwt:
+    authURL: ""
+    timeout: "1m"
+    buffer: "5s"
+  basic: "Basic YXV0aEhlYWRlcjp0ZXN0"
+filePath: "./events.json"
+useJSON: true
+validators:
+  bootTime:
+    validFrom: "8766h"
+    validTo: "1h"
+    minValidYear: 2015
+  birthdate:
+    validFrom: "8766h"
+    validTo: "1h"
+    minValidYear: 2015
+  birthdateAlignment:
+    alignDuration: "1h"
+  bootDuration:
+    minDuration: "10s"
