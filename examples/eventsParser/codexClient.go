@@ -100,7 +100,7 @@ func (c *CodexClient) sendRequest(req *http.Request) ([]byte, error) {
 
 }
 
-func (c *CodexClient) GetEvents(deviceID string) []interpreter.Event {
+func (c *CodexClient) getEvents(deviceID string) []interpreter.Event {
 	eventList := make([]interpreter.Event, 0)
 	request, err := buildGETRequest(fmt.Sprintf("%s/api/v1/device/%s/events", c.Address, deviceID), c.Auth)
 	if err != nil {

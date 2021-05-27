@@ -83,7 +83,7 @@ func readCommandLine(config Config, client *CodexClient) {
 			os.Exit(1)
 		}
 
-		bootCycles := ParseIntoCycles(events, comparator, validators)
+		bootCycles := parseIntoCycles(events, comparator, validators)
 		printBootCycles(bootCycles)
 		os.Exit(0)
 	} else {
@@ -92,15 +92,15 @@ func readCommandLine(config Config, client *CodexClient) {
 			scanner.Scan()
 			id := scanner.Text()
 			if len(id) > 0 {
-				events := client.GetEvents(id)
-				bootCycles := ParseIntoCycles(events, comparator, validators)
+				events := client.getEvents(id)
+				bootCycles := parseIntoCycles(events, comparator, validators)
 				printBootCycles(bootCycles)
 			}
 		}
 	}
 }
 
-func ParseIntoCycles(events []interpreter.Event, comparator history.Comparator, validator validation.Validator) []BootCycle {
+func parseIntoCycles(events []interpreter.Event, comparator history.Comparator, validator validation.Validator) []BootCycle {
 	index := 0
 	var cycles []BootCycle
 	parser := history.BootCycleParser(comparator, validator)
