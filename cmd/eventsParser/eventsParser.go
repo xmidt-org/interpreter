@@ -109,7 +109,7 @@ func parseIntoCycles(events []interpreter.Event, comparator history.Comparator, 
 	parser := history.BootCycleParser(comparator, validator)
 	seenBootTimes := make(map[int64]bool)
 	for _, event := range events {
-		if boottime, err := event.BootTime(); err == nil && seenBootTimes[boottime] != true {
+		if boottime, err := event.BootTime(); err == nil && !seenBootTimes[boottime] {
 			seenBootTimes[boottime] = true
 			parsedEvents, err := parser.Parse(events, event)
 			var ids []string

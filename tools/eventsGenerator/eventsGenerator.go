@@ -35,7 +35,7 @@ type Message struct {
 
 func generateEvents(config Config) []interpreter.Event {
 	now := time.Now()
-	var events []interpreter.Event
+	events := make([]interpreter.Event, 0, len(config.MessageContents))
 	for i, msg := range config.MessageContents {
 		if len(msg.Event.TransactionUUID) == 0 {
 			msg.Event.TransactionUUID = strconv.Itoa(i)
@@ -77,7 +77,7 @@ func createEvent(current time.Time, msg Message) interpreter.Event {
 
 func writeEvents(filePath string, events []interpreter.Event) {
 	if data, err := json.Marshal(events); err == nil {
-		writeErr := ioutil.WriteFile(filePath, data, 0644)
+		writeErr := ioutil.WriteFile(filePath, data, 0644) // nolint:gosec
 		if writeErr != nil {
 			panic(writeErr)
 		}
