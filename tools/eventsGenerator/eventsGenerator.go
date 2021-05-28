@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"sort"
 	"strconv"
@@ -34,7 +35,7 @@ type Message struct {
 
 func generateEvents(config Config) []interpreter.Event {
 	now := time.Now()
-	var events []interpreter.Event
+	events := make([]interpreter.Event, 0, len(config.MessageContents))
 	for i, msg := range config.MessageContents {
 		if len(msg.Event.TransactionUUID) == 0 {
 			msg.Event.TransactionUUID = strconv.Itoa(i)
@@ -75,14 +76,11 @@ func createEvent(current time.Time, msg Message) interpreter.Event {
 }
 
 func writeEvents(filePath string, events []interpreter.Event) {
-	file, err := os.Create(filePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not write events to file: %v", err)
-		return
-	}
-	defer file.Close()
-	if a, err := json.Marshal(events); err == nil {
-		file.WriteString(string(a))
+	if data, err := json.Marshal(events); err == nil {
+		writeErr := ioutil.WriteFile(filePath, data, 0644) // nolint:gosec
+		if writeErr != nil {
+			panic(writeErr)
+		}
 	}
 }
 

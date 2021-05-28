@@ -1,4 +1,4 @@
-filePath: "../eventsParser/events.json"
+filePath: "../../cmd/eventsParser/events.json"
 messageContents:
   - event:
       source: "mac:112233445566"
