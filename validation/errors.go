@@ -33,6 +33,7 @@ type TaggedError interface {
 // TaggedErrors is an optional interface for errors to implement if the error should include multiple tags.
 type TaggedErrors interface {
 	Tags() []Tag
+	UniqueTags() []Tag
 }
 
 // Errors is a Multierror that also acts as an error, so that a log-friendly
@@ -94,6 +95,28 @@ func (e Errors) Tags() []Tag {
 	return tags
 }
 
+// UniqueTags returns a slice of all tags that appear in the set of errors without repetition.
+func (e Errors) UniqueTags() []Tag {
+	existingTags := make(map[Tag]bool)
+	var tags []Tag
+	for _, err := range e {
+		var taggedErr TaggedError
+		var tag Tag
+		if errors.As(err, &taggedErr) {
+			tag = taggedErr.Tag()
+		} else {
+			tag = Unknown
+		}
+
+		if !existingTags[tag] {
+			existingTags[tag] = true
+			tags = append(tags, tag)
+		}
+	}
+
+	return tags
+}
+
 // EventWithError is a type of error that connects errors with a specific event.
 type EventWithError struct {
 	Event       interpreter.Event
@@ -127,8 +150,25 @@ func (e EventWithError) Tag() Tag {
 // the underlying error is a TaggedErrors.
 func (e EventWithError) Tags() []Tag {
 	var taggedErrs TaggedErrors
+	var taggedErr TaggedError
 	if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErrs) {
 		return taggedErrs.Tags()
+	} else if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErr) {
+		return []Tag{taggedErr.Tag()}
+	}
+
+	return nil
+}
+
+// UniqueTags implements the TaggedError interface, returning the unique tags of the underlying error if
+// the underlying error is a TaggedErrors.
+func (e EventWithError) UniqueTags() []Tag {
+	var taggedErrs TaggedErrors
+	var taggedErr TaggedError
+	if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErrs) {
+		return taggedErrs.UniqueTags()
+	} else if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErr) {
+		return []Tag{taggedErr.Tag()}
 	}
 
 	return nil

@@ -93,3 +93,36 @@ func (e EventFinderErr) Tag() validation.Tag {
 
 	return e.ErrorTag
 }
+
+// InconsistentMetadataErr is an error used by a CycleValidationFunc.
+type InconsistentMetadataErr struct {
+	InconsistentFields []string
+}
+
+func (e InconsistentMetadataErr) Error() string {
+	if len(e.InconsistentFields) > 0 {
+		return fmt.Sprintf("inconsistent metadata: %v", e.InconsistentFields)
+	}
+
+	return "inconsistent metadata"
+}
+
+func (e InconsistentMetadataErr) Tag() validation.Tag {
+	return validation.InconsistentMetadata
+}
+
+type RepeatIDErr struct {
+	RepeatedIDs []string
+}
+
+func (e RepeatIDErr) Error() string {
+	if len(e.RepeatedIDs) > 0 {
+		return fmt.Sprintf("repeated transaction uuid: %v", e.RepeatedIDs)
+	}
+
+	return "repeated transaction uuid"
+}
+
+func (e RepeatIDErr) Tag() validation.Tag {
+	return validation.RepeatedTransactionUUID
+}

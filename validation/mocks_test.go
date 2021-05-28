@@ -21,6 +21,20 @@ func (t testError) Tags() []Tag {
 	return t.tags
 }
 
+func (t testError) UniqueTags() []Tag {
+	var tags []Tag
+	existingTags := make(map[Tag]bool)
+
+	for _, tag := range t.tags {
+		if !existingTags[tag] {
+			existingTags[tag] = true
+			tags = append(tags, tag)
+		}
+	}
+
+	return tags
+}
+
 func (t testError) Unwrap() error {
 	return t.err
 }

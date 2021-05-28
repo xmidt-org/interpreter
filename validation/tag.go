@@ -31,67 +31,75 @@ const (
 	InvalidEventType
 	EventTypeMismatch
 	DuplicateEvent
+	InconsistentMetadata
+	RepeatedTransactionUUID
 )
 
 const (
-	UnknownStr              = "unknown"
-	PassStr                 = "pass"
-	MultipleTagsStr         = "multiple_tags"
-	InconsistentDeviceIDStr = "inconsistent_device_id"
-	InvalidBootTimeStr      = "invalid_boot_time"
-	MissingBootTimeStr      = "missing_boot_time"
-	OldBootTimeStr          = "suspiciously_old_boot_time"
-	NewerBootTimeFoundStr   = "newer_boot_time_found"
-	InvalidBootDurationStr  = "invalid_boot_duration"
-	FastBootStr             = "suspiciously_fast_boot"
-	InvalidBirthdateStr     = "invalid_birthdate"
-	MisalignedBirthdateStr  = "misaligned_birthdate"
-	InvalidDestinationStr   = "invalid_destination"
-	NonEventStr             = "not_an_event"
-	InvalidEventTypeStr     = "invalid_event_type"
-	EventTypeMismatchStr    = "event_type_mismatch"
-	DuplicateEventStr       = "duplicate_event"
+	UnknownStr                 = "unknown"
+	PassStr                    = "pass"
+	MultipleTagsStr            = "multiple_tags"
+	InconsistentDeviceIDStr    = "inconsistent_device_id"
+	InvalidBootTimeStr         = "invalid_boot_time"
+	MissingBootTimeStr         = "missing_boot_time"
+	OldBootTimeStr             = "suspiciously_old_boot_time"
+	NewerBootTimeFoundStr      = "newer_boot_time_found"
+	InvalidBootDurationStr     = "invalid_boot_duration"
+	FastBootStr                = "suspiciously_fast_boot"
+	InvalidBirthdateStr        = "invalid_birthdate"
+	MisalignedBirthdateStr     = "misaligned_birthdate"
+	InvalidDestinationStr      = "invalid_destination"
+	NonEventStr                = "not_an_event"
+	InvalidEventTypeStr        = "invalid_event_type"
+	EventTypeMismatchStr       = "event_type_mismatch"
+	DuplicateEventStr          = "duplicate_event"
+	InconsistentMetadataStr    = "inconsistent_metadata"
+	RepeatedTransactionUUIDStr = "repeated_transaction_uuid"
 )
 
 var (
 	tagToString = map[Tag]string{
-		Unknown:              UnknownStr,
-		Pass:                 PassStr,
-		MultipleTags:         MultipleTagsStr,
-		InconsistentDeviceID: InconsistentDeviceIDStr,
-		InvalidBootTime:      InvalidBootTimeStr,
-		MissingBootTime:      MissingBootTimeStr,
-		OldBootTime:          OldBootTimeStr,
-		NewerBootTimeFound:   NewerBootTimeFoundStr,
-		InvalidBootDuration:  InvalidBootDurationStr,
-		FastBoot:             FastBootStr,
-		InvalidBirthdate:     InvalidBirthdateStr,
-		MisalignedBirthdate:  MisalignedBirthdateStr,
-		InvalidDestination:   InvalidDestinationStr,
-		NonEvent:             NonEventStr,
-		InvalidEventType:     InvalidEventTypeStr,
-		EventTypeMismatch:    EventTypeMismatchStr,
-		DuplicateEvent:       DuplicateEventStr,
+		Unknown:                 UnknownStr,
+		Pass:                    PassStr,
+		MultipleTags:            MultipleTagsStr,
+		InconsistentDeviceID:    InconsistentDeviceIDStr,
+		InvalidBootTime:         InvalidBootTimeStr,
+		MissingBootTime:         MissingBootTimeStr,
+		OldBootTime:             OldBootTimeStr,
+		NewerBootTimeFound:      NewerBootTimeFoundStr,
+		InvalidBootDuration:     InvalidBootDurationStr,
+		FastBoot:                FastBootStr,
+		InvalidBirthdate:        InvalidBirthdateStr,
+		MisalignedBirthdate:     MisalignedBirthdateStr,
+		InvalidDestination:      InvalidDestinationStr,
+		NonEvent:                NonEventStr,
+		InvalidEventType:        InvalidEventTypeStr,
+		EventTypeMismatch:       EventTypeMismatchStr,
+		DuplicateEvent:          DuplicateEventStr,
+		InconsistentMetadata:    InconsistentMetadataStr,
+		RepeatedTransactionUUID: RepeatedTransactionUUIDStr,
 	}
 
 	stringToTag = map[string]Tag{
-		UnknownStr:              Unknown,
-		PassStr:                 Pass,
-		MultipleTagsStr:         MultipleTags,
-		InconsistentDeviceIDStr: InconsistentDeviceID,
-		InvalidBootTimeStr:      InvalidBootTime,
-		MissingBootTimeStr:      MissingBootTime,
-		OldBootTimeStr:          OldBootTime,
-		NewerBootTimeFoundStr:   NewerBootTimeFound,
-		InvalidBootDurationStr:  InvalidBootDuration,
-		FastBootStr:             FastBoot,
-		InvalidBirthdateStr:     InvalidBirthdate,
-		MisalignedBirthdateStr:  MisalignedBirthdate,
-		InvalidDestinationStr:   InvalidDestination,
-		NonEventStr:             NonEvent,
-		InvalidEventTypeStr:     InvalidEventType,
-		EventTypeMismatchStr:    EventTypeMismatch,
-		DuplicateEventStr:       DuplicateEvent,
+		UnknownStr:                 Unknown,
+		PassStr:                    Pass,
+		MultipleTagsStr:            MultipleTags,
+		InconsistentDeviceIDStr:    InconsistentDeviceID,
+		InvalidBootTimeStr:         InvalidBootTime,
+		MissingBootTimeStr:         MissingBootTime,
+		OldBootTimeStr:             OldBootTime,
+		NewerBootTimeFoundStr:      NewerBootTimeFound,
+		InvalidBootDurationStr:     InvalidBootDuration,
+		FastBootStr:                FastBoot,
+		InvalidBirthdateStr:        InvalidBirthdate,
+		MisalignedBirthdateStr:     MisalignedBirthdate,
+		InvalidDestinationStr:      InvalidDestination,
+		NonEventStr:                NonEvent,
+		InvalidEventTypeStr:        InvalidEventType,
+		EventTypeMismatchStr:       EventTypeMismatch,
+		DuplicateEventStr:          DuplicateEvent,
+		InconsistentMetadataStr:    InconsistentMetadata,
+		RepeatedTransactionUUIDStr: RepeatedTransactionUUID,
 	}
 )
 
