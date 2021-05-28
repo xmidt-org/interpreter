@@ -6,8 +6,8 @@
 *.dylib
 
 # Ignore example binaries
-examples/eventsGenerator/eventsGenerator
-examples/eventsParser/eventsParser
+tools/eventsGenerator/eventsGenerator
+cmd/eventsParser/eventsParser
 
 
 # Test binary, build with `go test -c`

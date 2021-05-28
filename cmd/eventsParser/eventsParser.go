@@ -88,14 +88,17 @@ func readCommandLine(config Config, client *CodexClient) {
 		os.Exit(0)
 	} else {
 		scanner := bufio.NewScanner(os.Stdin)
-		for {
-			scanner.Scan()
+		for scanner.Scan() {
 			id := scanner.Text()
 			if len(id) > 0 {
 				events := client.getEvents(id)
 				bootCycles := parseIntoCycles(events, comparator, validators)
 				printBootCycles(bootCycles)
 			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "reading standard input:", err)
 		}
 	}
 }
@@ -179,7 +182,7 @@ func printErrorTags(err error) {
 		if errors.As(err, &eventWithErr) {
 			fmt.Fprintf(os.Stdout, "Event %s: %v\n", eventWithErr.Event.TransactionUUID, eventWithErr.Tags())
 		} else {
-			fmt.Fprintf(os.Stdout, "error: %v\n", err)
+			fmt.Fprintln(os.Stdout, "error: ", err)
 		}
 	}
 }
