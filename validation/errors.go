@@ -20,6 +20,7 @@ package validation
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/xmidt-org/interpreter"
@@ -34,6 +35,11 @@ type TaggedError interface {
 type TaggedErrors interface {
 	Tags() []Tag
 	UniqueTags() []Tag
+}
+
+// ErrorWithFields is an optional interface for errors to implement if the error should include extra fields as information.
+type ErrorWithFields interface {
+	Fields() []string
 }
 
 // Errors is a Multierror that also acts as an error, so that a log-friendly
@@ -257,6 +263,15 @@ func (e InvalidBirthdateErr) Tag() Tag {
 	return e.ErrorTag
 }
 
+// Fields implements the ErrorWithFields interface
+func (e InvalidBirthdateErr) Fields() []string {
+	var fields []string
+	for _, val := range e.Timestamps {
+		fields = append(fields, strconv.FormatInt(val, 10))
+	}
+	return fields
+}
+
 // InconsistentIDErr is an error returned when the ids in an event is inconsistent.
 type InconsistentIDErr struct {
 	IDs []string
@@ -269,6 +284,11 @@ func (e InconsistentIDErr) Error() string {
 // Tag will always return the InconsistentDeviceID tag.
 func (e InconsistentIDErr) Tag() Tag {
 	return InconsistentDeviceID
+}
+
+// Fields implements the ErrorWithFields interface.
+func (e InconsistentIDErr) Fields() []string {
+	return e.IDs
 }
 
 // BootDurationErr is an error that is returned when the device boot duration is deemed invalid.

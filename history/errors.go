@@ -45,6 +45,7 @@ func (e ComparatorErr) Unwrap() error {
 	return e.OriginalErr
 }
 
+// Tag implements the TaggedError interface.
 func (e ComparatorErr) Tag() validation.Tag {
 	if e.ErrorTag != validation.Unknown {
 		return e.ErrorTag
@@ -81,6 +82,7 @@ func (e EventFinderErr) Unwrap() error {
 	return e.OriginalErr
 }
 
+// Tag implements the TaggedError interface.
 func (e EventFinderErr) Tag() validation.Tag {
 	if e.ErrorTag != validation.Unknown {
 		return e.ErrorTag
@@ -94,35 +96,40 @@ func (e EventFinderErr) Tag() validation.Tag {
 	return e.ErrorTag
 }
 
-// InconsistentMetadataErr is an error used by a CycleValidationFunc.
-type InconsistentMetadataErr struct {
-	InconsistentFields []string
+// CycleValidationErr is an error returned by validators for list of events.
+type CycleValidationErr struct {
+	OriginalErr   error
+	ErrorTag      validation.Tag
+	InvalidFields []string
 }
 
-func (e InconsistentMetadataErr) Error() string {
-	if len(e.InconsistentFields) > 0 {
-		return fmt.Sprintf("inconsistent metadata: %v", e.InconsistentFields)
+func (e CycleValidationErr) Error() string {
+	if e.OriginalErr != nil {
+		return fmt.Sprintf("cycle validation error: %v", e.OriginalErr)
 	}
 
-	return "inconsistent metadata"
+	return "cycle validation error"
 }
 
-func (e InconsistentMetadataErr) Tag() validation.Tag {
-	return validation.InconsistentMetadata
-}
-
-type RepeatIDErr struct {
-	RepeatedIDs []string
-}
-
-func (e RepeatIDErr) Error() string {
-	if len(e.RepeatedIDs) > 0 {
-		return fmt.Sprintf("repeated transaction uuid: %v", e.RepeatedIDs)
+// Tag implements the TaggedError interface.
+func (e CycleValidationErr) Tag() validation.Tag {
+	if e.ErrorTag != validation.Unknown {
+		return e.ErrorTag
 	}
 
-	return "repeated transaction uuid"
+	var taggedErr validation.TaggedError
+	if e.OriginalErr != nil && errors.As(e.OriginalErr, &taggedErr) {
+		return taggedErr.Tag()
+	}
+
+	return e.ErrorTag
 }
 
-func (e RepeatIDErr) Tag() validation.Tag {
-	return validation.RepeatedTransactionUUID
+func (e CycleValidationErr) Unwrap() error {
+	return e.OriginalErr
+}
+
+// Fields returns the fields that resulted in the error.
+func (e CycleValidationErr) Fields() []string {
+	return e.InvalidFields
 }
