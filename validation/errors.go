@@ -262,9 +262,13 @@ func (e InvalidBirthdateErr) Tag() Tag {
 
 // Fields implements the ErrorWithFields interface
 func (e InvalidBirthdateErr) Fields() []string {
-	var fields []string
-	for _, val := range e.Timestamps {
-		fields = append(fields, strconv.FormatInt(val, 10))
+	if len(e.Timestamps) == 0 {
+		return nil
+	}
+
+	fields := make([]string, len(e.Timestamps))
+	for i, val := range e.Timestamps {
+		fields[i] = strconv.FormatInt(val, 10)
 	}
 	return fields
 }
