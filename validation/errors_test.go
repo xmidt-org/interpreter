@@ -2,7 +2,9 @@ package validation
 
 import (
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/xmidt-org/interpreter"
 
@@ -160,10 +162,15 @@ func TestInvalidBootTimeErr(t *testing.T) {
 }
 
 func TestInvalidBirthdateErr(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+
 	tests := []struct {
-		description   string
-		underlyingErr error
-		tag           Tag
+		description    string
+		underlyingErr  error
+		tag            Tag
+		timestamps     []int64
+		expectedFields []string
 	}{
 		{
 			description: "No underlying error",
@@ -174,14 +181,20 @@ func TestInvalidBirthdateErr(t *testing.T) {
 		},
 		{
 			description: "Underlying tag",
-			tag:         MisalignedBirthdate,
+			tag:         2000,
+		},
+		{
+			description:   "With fields",
+			underlyingErr: errors.New("test error"),
+			tag:           2000,
+			timestamps:    []int64{now.Unix(), now.Add(time.Hour).Unix(), now.Add(time.Minute).Unix()},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			err := InvalidBirthdateErr{OriginalErr: tc.underlyingErr, ErrorTag: tc.tag}
+			err := InvalidBirthdateErr{OriginalErr: tc.underlyingErr, ErrorTag: tc.tag, Timestamps: tc.timestamps}
 			if tc.underlyingErr != nil {
 				assert.Contains(err.Error(), tc.underlyingErr.Error())
 			}
@@ -191,6 +204,12 @@ func TestInvalidBirthdateErr(t *testing.T) {
 			} else {
 				assert.Equal(InvalidBirthdate, err.Tag())
 			}
+
+			var expectedFields []string
+			for _, val := range tc.timestamps {
+				expectedFields = append(expectedFields, fmt.Sprint(val))
+			}
+			assert.Equal(expectedFields, err.Fields())
 		})
 	}
 }
