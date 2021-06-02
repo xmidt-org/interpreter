@@ -11,10 +11,11 @@ import (
 
 func TestErrors(t *testing.T) {
 	tests := []struct {
-		description  string
-		errList      []error
-		expectedTags []Tag
-		expectedTag  Tag
+		description        string
+		errList            []error
+		expectedTags       []Tag
+		expectedTag        Tag
+		expectedUniqueTags []Tag
 	}{
 		{
 			description:  "no tags",
@@ -25,20 +26,32 @@ func TestErrors(t *testing.T) {
 		{
 			description: "all tags",
 			errList: []error{
-				testError{err: errors.New("test"), tag: 1000},
-				testError{err: errors.New("test2"), tag: 2000},
-				testError{err: errors.New("test3"), tag: 3000}},
-			expectedTags: []Tag{1000, 2000, 3000},
-			expectedTag:  MultipleTags,
+				testTaggedErrors{err: errors.New("test"), tag: 1000},
+				testTaggedErrors{err: errors.New("test2"), tag: 2000},
+				testTaggedErrors{err: errors.New("test3"), tag: 3000}},
+			expectedTags:       []Tag{1000, 2000, 3000},
+			expectedTag:        MultipleTags,
+			expectedUniqueTags: []Tag{1000, 2000, 3000},
 		},
 		{
 			description: "one tag",
 			errList: []error{
 				errors.New("test"),
-				testError{err: errors.New("test2"), tag: 2000},
+				testTaggedErrors{err: errors.New("test2"), tag: 2000},
 				errors.New("test3")},
-			expectedTags: []Tag{Unknown, 2000, Unknown},
-			expectedTag:  2000,
+			expectedTags:       []Tag{Unknown, 2000, Unknown},
+			expectedTag:        2000,
+			expectedUniqueTags: []Tag{2000},
+		},
+		{
+			description: "multiple same tags",
+			errList: []error{
+				testTaggedErrors{err: errors.New("test"), tag: 1000},
+				testTaggedErrors{err: errors.New("test2"), tag: 2000},
+				testTaggedErrors{err: errors.New("test3"), tag: 1000}},
+			expectedTags:       []Tag{1000, 2000, 1000},
+			expectedTag:        MultipleTags,
+			expectedUniqueTags: []Tag{1000, 2000},
 		},
 	}
 
@@ -51,13 +64,14 @@ func TestErrors(t *testing.T) {
 				assert.Contains(e.Errors(), err)
 				assert.ElementsMatch(tc.expectedTags, e.Tags())
 				assert.Equal(tc.expectedTag, e.Tag())
+				assert.ElementsMatch(tc.expectedUniqueTags, e.UniqueTags())
 			}
 		})
 	}
 
 }
 func TestInvalidEventErr(t *testing.T) {
-	testErr := testError{
+	testErr := testTaggedErrors{
 		err: errors.New("test error"),
 		tag: InvalidBirthdate,
 	}
@@ -219,9 +233,30 @@ func TestInvalidDestinationErr(t *testing.T) {
 }
 
 func TestInconsistentIDErr(t *testing.T) {
-	err := InconsistentIDErr{}
-	assert.Equal(t, InconsistentDeviceID, err.Tag())
-	assert.Contains(t, err.Error(), "inconsistent device id")
+	tests := []struct {
+		description    string
+		err            InconsistentIDErr
+		expectedFields []string
+	}{
+		{
+			description: "no fields",
+			err:         InconsistentIDErr{},
+		},
+		{
+			description:    "with fields",
+			err:            InconsistentIDErr{IDs: []string{"test", "test1"}},
+			expectedFields: []string{"test", "test1"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			assert.Equal(InconsistentDeviceID, tc.err.Tag())
+			assert.Contains(tc.err.Error(), "inconsistent device id")
+			assert.Equal(tc.expectedFields, tc.err.Fields())
+		})
+	}
 }
 
 func TestBootDurationErr(t *testing.T) {
@@ -264,11 +299,12 @@ func TestBootDurationErr(t *testing.T) {
 func TestEventWithError(t *testing.T) {
 	err := errors.New("test")
 	tests := []struct {
-		description   string
-		underlyingErr error
-		event         interpreter.Event
-		expectedTag   Tag
-		expectedTags  []Tag
+		description        string
+		underlyingErr      error
+		event              interpreter.Event
+		expectedTag        Tag
+		expectedTags       []Tag
+		expectedUniqueTags []Tag
 	}{
 		{
 			description:   "with event and err",
@@ -278,31 +314,35 @@ func TestEventWithError(t *testing.T) {
 		},
 		{
 			description: "tagged err",
-			underlyingErr: testError{
+			underlyingErr: testTaggedError{
 				err: err,
 				tag: 2000,
 			},
-			event:       interpreter.Event{TransactionUUID: "test"},
-			expectedTag: 2000,
+			event:              interpreter.Event{TransactionUUID: "test"},
+			expectedTag:        2000,
+			expectedTags:       []Tag{2000},
+			expectedUniqueTags: []Tag{2000},
 		},
 		{
 			description: "multiple tags",
-			underlyingErr: testError{
+			underlyingErr: testTaggedErrors{
 				err:  err,
-				tags: []Tag{2000, 3000, 4000},
+				tags: []Tag{2000, 3000, 4000, 3000},
 			},
-			event:        interpreter.Event{TransactionUUID: "test"},
-			expectedTag:  MultipleTags,
-			expectedTags: []Tag{2000, 3000, 4000},
+			event:              interpreter.Event{TransactionUUID: "test"},
+			expectedTag:        MultipleTags,
+			expectedTags:       []Tag{2000, 3000, 4000, 3000},
+			expectedUniqueTags: []Tag{2000, 3000, 4000},
 		},
 		{
 			description: "No event",
-			underlyingErr: testError{
+			underlyingErr: testTaggedErrors{
 				err:  err,
 				tags: []Tag{2000, 3000, 4000},
 			},
-			expectedTag:  MultipleTags,
-			expectedTags: []Tag{2000, 3000, 4000},
+			expectedTag:        MultipleTags,
+			expectedTags:       []Tag{2000, 3000, 4000},
+			expectedUniqueTags: []Tag{2000, 3000, 4000},
 		},
 	}
 
@@ -318,6 +358,7 @@ func TestEventWithError(t *testing.T) {
 			assert.Equal(resultingErr.Event, tc.event)
 			assert.Equal(tc.expectedTag, resultingErr.Tag())
 			assert.Equal(tc.expectedTags, resultingErr.Tags())
+			assert.ElementsMatch(tc.expectedUniqueTags, resultingErr.UniqueTags())
 		})
 	}
 }

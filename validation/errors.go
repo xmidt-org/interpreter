@@ -110,13 +110,10 @@ func (e Errors) UniqueTags() []Tag {
 		var tag Tag
 		if errors.As(err, &taggedErr) {
 			tag = taggedErr.Tag()
-		} else {
-			tag = Unknown
-		}
-
-		if !existingTags[tag] {
-			existingTags[tag] = true
-			tags = append(tags, tag)
+			if !existingTags[tag] {
+				existingTags[tag] = true
+				tags = append(tags, tag)
+			}
 		}
 	}
 

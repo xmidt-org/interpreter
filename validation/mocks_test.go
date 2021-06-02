@@ -1,27 +1,40 @@
 package validation
 
-type testError struct {
+type testTaggedError struct {
+	err error
+	tag Tag
+}
+
+func (t testTaggedError) Error() string {
+	return t.err.Error()
+}
+
+func (t testTaggedError) Tag() Tag {
+	return t.tag
+}
+
+type testTaggedErrors struct {
 	err  error
 	tag  Tag
 	tags []Tag
 }
 
-func (t testError) Error() string {
+func (t testTaggedErrors) Error() string {
 	return t.err.Error()
 }
 
-func (t testError) Tag() Tag {
+func (t testTaggedErrors) Tag() Tag {
 	if t.tag == Unknown && len(t.tags) > 0 {
 		return MultipleTags
 	}
 	return t.tag
 }
 
-func (t testError) Tags() []Tag {
+func (t testTaggedErrors) Tags() []Tag {
 	return t.tags
 }
 
-func (t testError) UniqueTags() []Tag {
+func (t testTaggedErrors) UniqueTags() []Tag {
 	var tags []Tag
 	existingTags := make(map[Tag]bool)
 
@@ -31,10 +44,9 @@ func (t testError) UniqueTags() []Tag {
 			tags = append(tags, tag)
 		}
 	}
-
 	return tags
 }
 
-func (t testError) Unwrap() error {
+func (t testTaggedErrors) Unwrap() error {
 	return t.err
 }
