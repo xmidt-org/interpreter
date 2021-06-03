@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/xmidt-org/interpreter/validation"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/xmidt-org/interpreter"
 )
@@ -179,6 +181,237 @@ func TestMetadataValidator(t *testing.T) {
 				var cvErr CycleValidationErr
 				assert.True(errors.As(err, &cvErr))
 				assert.ElementsMatch(tc.expectedInvalidFields, cvErr.Fields())
+			}
+		})
+	}
+}
+
+func TestSessionOnlineValidator(t *testing.T) {
+	tests := []struct {
+		description   string
+		events        []interpreter.Event
+		expectedValid bool
+		expectedIDs   []string
+	}{
+		{
+			description:   "empty list",
+			events:        []interpreter.Event{},
+			expectedValid: true,
+		},
+		{
+			description: "all valid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "5",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "3",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "3",
+				},
+			},
+			expectedValid: true,
+		},
+		{
+			description: "invalid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "3",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "4",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "5",
+				},
+			},
+			expectedValid: false,
+			expectedIDs:   []string{"2", "3"},
+		},
+	}
+
+	validator := SessionOnlineValidator()
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			valid, err := validator.Valid(tc.events)
+			assert.Equal(tc.expectedValid, valid)
+			if !tc.expectedValid {
+				var cvErr CycleValidationErr
+				assert.True(errors.As(err, &cvErr))
+				assert.ElementsMatch(tc.expectedIDs, cvErr.Fields())
+				assert.Equal(validation.MissingOnlineEvent, cvErr.Tag())
+			} else {
+				assert.Nil(err)
+			}
+		})
+	}
+}
+
+func TestSessionOfflineValidator(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+
+	tests := []struct {
+		description   string
+		events        []interpreter.Event
+		expectedValid bool
+		expectedIDs   []string
+	}{
+		{
+			description:   "empty list",
+			events:        []interpreter.Event{},
+			expectedValid: true,
+		},
+		{
+			description: "invalid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+					Birthdate:   now.Add(-5 * time.Hour).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+					Birthdate:   now.Add(-4 * time.Hour).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					SessionID:   "1",
+					Birthdate:   now.Add(-3 * time.Hour).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+					Birthdate:   now.Add(-20 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Birthdate:   now.Add(-15 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "3",
+					Birthdate:   now.Add(-10 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "5",
+					Birthdate:   now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "4",
+					Birthdate:   now.Add(-5 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: false,
+			expectedIDs:   []string{"2", "4"},
+		},
+		{
+			description: "valid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+					Birthdate:   now.Add(-5 * time.Hour).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+					Birthdate:   now.Add(-4 * time.Hour).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					SessionID:   "1",
+					Birthdate:   now.Add(-3 * time.Hour).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+					Birthdate:   now.Add(-20 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					SessionID:   "2",
+					Birthdate:   now.Add(-20 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Birthdate:   now.Add(-15 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "3",
+					Birthdate:   now.Add(-10 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "5",
+					Birthdate:   now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "4",
+					Birthdate:   now.Add(-5 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					SessionID:   "4",
+					Birthdate:   now.Add(-5 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: true,
+		},
+	}
+
+	validator := SessionOfflineValidator()
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			valid, err := validator.Valid(tc.events)
+			assert.Equal(tc.expectedValid, valid)
+			if !tc.expectedValid {
+				var cvErr CycleValidationErr
+				assert.True(errors.As(err, &cvErr))
+				assert.ElementsMatch(tc.expectedIDs, cvErr.Fields())
+				assert.Equal(validation.MissingOfflineEvent, cvErr.Tag())
+			} else {
+				assert.Nil(err)
 			}
 		})
 	}
