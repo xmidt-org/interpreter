@@ -53,6 +53,7 @@ var (
 	// DeviceIDRegex is used to parse a device id from anywhere.
 	DeviceIDRegex = regexp.MustCompile(fmt.Sprintf(`(?P<%s>(?i)mac|uuid|dns|serial):(?P<%s>[^/]+)`, SchemeSubexpName, AuthoritySubexpName))
 
+	OnlineEventType        = "online"
 	OfflineEventType       = "offline"
 	RebootPendingEventType = "reboot-pending"
 
@@ -81,6 +82,7 @@ type Event struct {
 	Payload         string            `json:"payload,omitempty"`
 	Birthdate       int64             `json:"birth_date"`
 	PartnerIDs      []string          `json:"partner_ids,omitempty"`
+	SessionID       string            `json:"sessionID"`
 }
 
 // NewEvent creates an Event from a wrp.Message and also parses the Birthdate from the
@@ -97,6 +99,7 @@ func NewEvent(msg wrp.Message) (Event, error) {
 		Metadata:        msg.Metadata,
 		Payload:         string(msg.Payload),
 		PartnerIDs:      msg.PartnerIDs,
+		SessionID:       msg.SessionID,
 	}
 
 	if birthdate, ok := getBirthDate(msg.Payload); ok {

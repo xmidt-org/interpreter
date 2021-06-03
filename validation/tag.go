@@ -33,6 +33,8 @@ const (
 	DuplicateEvent
 	InconsistentMetadata
 	RepeatedTransactionUUID
+	MissingOnlineEvent
+	MissingOfflineEvent
 )
 
 const (
@@ -55,6 +57,8 @@ const (
 	DuplicateEventStr          = "duplicate_event"
 	InconsistentMetadataStr    = "inconsistent_metadata"
 	RepeatedTransactionUUIDStr = "repeated_transaction_uuid"
+	MissingOnlineEventStr      = "missing_online_event"
+	MissingOfflineEventStr     = "missing_offline_event"
 )
 
 var (
@@ -78,6 +82,8 @@ var (
 		DuplicateEvent:          DuplicateEventStr,
 		InconsistentMetadata:    InconsistentMetadataStr,
 		RepeatedTransactionUUID: RepeatedTransactionUUIDStr,
+		MissingOnlineEvent:      MissingOnlineEventStr,
+		MissingOfflineEvent:     MissingOfflineEventStr,
 	}
 
 	stringToTag = map[string]Tag{
@@ -100,6 +106,8 @@ var (
 		DuplicateEventStr:          DuplicateEvent,
 		InconsistentMetadataStr:    InconsistentMetadata,
 		RepeatedTransactionUUIDStr: RepeatedTransactionUUID,
+		MissingOnlineEventStr:      MissingOnlineEvent,
+		MissingOfflineEventStr:     MissingOfflineEvent,
 	}
 )
 
