@@ -80,8 +80,8 @@ func TransactionUUIDValidator() CycleValidatorFunc {
 	}
 }
 
-// SessionOnlineValidator returns a CycleValidatorFunc that validates that all session IDs in the slice
-// have an online event
+// SessionOnlineValidator returns a CycleValidatorFunc that validates that all sessions in the slice
+// (determined by sessionIDs) have an online event.
 func SessionOnlineValidator() CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
 		onlineEvents := make(map[string]bool)
@@ -120,8 +120,8 @@ func SessionOnlineValidator() CycleValidatorFunc {
 	}
 }
 
-// SessionOfflineValidator returns a CycleValidatorFunc that validates that all session IDs in the slice
-// except for the most recent session have an offline event
+// SessionOfflineValidator returns a CycleValidatorFunc that validates that all sessions in the slice
+// (except for the most recent session) have an offline event.
 func SessionOfflineValidator() CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
 		if len(events) == 0 {
