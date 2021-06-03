@@ -1,4 +1,4 @@
-module github.com/xmidt-org/interpreter/examples/eventsParser
+module github.com/xmidt-org/interpreter/cmd/eventsParser
 
 go 1.15
 

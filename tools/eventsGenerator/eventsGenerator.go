@@ -85,9 +85,15 @@ func writeEvents(filePath string, events []interpreter.Event) {
 }
 
 func main() {
+	var configFile string
+	if len(os.Args) > 2 {
+		configFile = os.Args[2]
+	} else {
+		configFile = fmt.Sprintf("./%s", applicationName)
+	}
+
 	v := viper.New()
-	v.AddConfigPath(".")
-	v.SetConfigName(applicationName)
+	v.SetConfigFile(configFile)
 	err := v.ReadInConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read in viper config: %v\n", err.Error())
