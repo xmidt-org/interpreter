@@ -83,7 +83,11 @@ func readCommandLine(config Config) {
 }
 
 func createValidators(config Config) []history.CycleValidatorFunc {
-	validators := []history.CycleValidatorFunc{history.TransactionUUIDValidator(), history.SessionOnlineValidator(), history.SessionOfflineValidator()}
+	validators := []history.CycleValidatorFunc{
+		history.TransactionUUIDValidator(),
+		history.SessionOnlineValidator(func(id string) bool { return false }),
+		history.SessionOfflineValidator(func(id string) bool { return false }),
+	}
 	var withinCycleChecks []string
 	var wholeCycleChecks []string
 	for _, metadata := range config.MetadataValidators {

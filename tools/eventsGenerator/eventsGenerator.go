@@ -86,8 +86,8 @@ func writeEvents(filePath string, events []interpreter.Event) {
 
 func main() {
 	var configFile string
-	if len(os.Args) > 2 {
-		configFile = os.Args[2]
+	if len(os.Args) > 1 {
+		configFile = os.Args[1]
 	} else {
 		configFile = fmt.Sprintf("./%s", applicationName)
 	}
@@ -109,8 +109,8 @@ func main() {
 		fx.Invoke(
 			func(config Config, events []interpreter.Event) {
 				var filePath string
-				if len(os.Args) > 1 {
-					filePath = os.Args[1]
+				if len(os.Args) > 2 {
+					filePath = os.Args[2]
 				} else {
 					filePath = config.FilePath
 				}
