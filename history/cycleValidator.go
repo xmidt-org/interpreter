@@ -3,7 +3,6 @@ package history
 import (
 	"errors"
 	"fmt"
-	"sort"
 
 	"github.com/xmidt-org/interpreter"
 	"github.com/xmidt-org/interpreter/validation"
@@ -88,8 +87,9 @@ func TransactionUUIDValidator() CycleValidatorFunc {
 }
 
 // SessionOnlineValidator returns a CycleValidatorFunc that validates that all sessions in the slice
-// (determined by sessionIDs) have an online event.
-func SessionOnlineValidator() CycleValidatorFunc {
+// (determined by sessionIDs) have an online event. It takes in excludeFunc, which is a function that
+// takes in a session ID and returns true if that session is still valid even if it does not have an online event.
+func SessionOnlineValidator(excludeFunc func(id string) bool) CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
 		onlineEvents := make(map[string]bool)
 		sessionIDs := make(map[string]bool)
@@ -108,28 +108,23 @@ func SessionOnlineValidator() CycleValidatorFunc {
 			}
 		}
 
-		var missingEvents []string
-		for id := range sessionIDs {
-			if !onlineEvents[id] {
-				missingEvents = append(missingEvents, id)
+		if valid, invalidIds := determineError(sessionIDs, onlineEvents, excludeFunc); valid {
+			return true, nil
+		} else {
+			return false, CycleValidationErr{
+				OriginalErr:   ErrMissingOnlineEvent,
+				InvalidFields: invalidIds,
+				ErrorTag:      validation.MissingOnlineEvent,
 			}
 		}
 
-		if len(missingEvents) == 0 {
-			return true, nil
-		}
-
-		return false, CycleValidationErr{
-			OriginalErr:   ErrMissingOnlineEvent,
-			InvalidFields: missingEvents,
-			ErrorTag:      validation.MissingOnlineEvent,
-		}
 	}
 }
 
 // SessionOfflineValidator returns a CycleValidatorFunc that validates that all sessions in the slice
-// (except for the most recent session) have an offline event.
-func SessionOfflineValidator() CycleValidatorFunc {
+// (except for the most recent session) have an offline event. It takes in excludeFunc, which is a function that
+// takes in a session ID and returns true if that session is still valid even if it does not have an offline event.
+func SessionOfflineValidator(excludeFunc func(id string) bool) CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
 		if len(events) == 0 {
 			return true, nil
@@ -137,11 +132,6 @@ func SessionOfflineValidator() CycleValidatorFunc {
 
 		offlineEvents := make(map[string]bool)
 		sessionIDs := make(map[string]bool)
-		sort.Slice(events, func(a, b int) bool {
-			return events[a].Birthdate > events[b].Birthdate
-		})
-
-		mostRecentSessionID := events[0].SessionID
 		for _, event := range events {
 			sessionID := event.SessionID
 			eventType, err := event.EventType()
@@ -157,23 +147,31 @@ func SessionOfflineValidator() CycleValidatorFunc {
 
 		}
 
-		var missingEvents []string
-		for id := range sessionIDs {
-			if !offlineEvents[id] && id != mostRecentSessionID {
-				missingEvents = append(missingEvents, id)
+		if valid, invalidIds := determineError(sessionIDs, offlineEvents, excludeFunc); valid {
+			return true, nil
+		} else {
+			return false, CycleValidationErr{
+				OriginalErr:   ErrMissingOfflineEvent,
+				InvalidFields: invalidIds,
+				ErrorTag:      validation.MissingOfflineEvent,
 			}
 		}
+	}
+}
 
-		if len(missingEvents) == 0 {
-			return true, nil
-		}
-
-		return false, CycleValidationErr{
-			OriginalErr:   ErrMissingOfflineEvent,
-			InvalidFields: missingEvents,
-			ErrorTag:      validation.MissingOfflineEvent,
+func determineError(sessionIDs map[string]bool, existingEvents map[string]bool, exclude func(id string) bool) (bool, []string) {
+	var missingEvents []string
+	for id := range sessionIDs {
+		if !existingEvents[id] && !exclude(id) {
+			missingEvents = append(missingEvents, id)
 		}
 	}
+
+	if len(missingEvents) == 0 {
+		return true, nil
+	}
+
+	return false, missingEvents
 }
 
 func determineMetadataValues(fields []string, event interpreter.Event) map[string]string {
