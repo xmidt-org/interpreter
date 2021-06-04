@@ -233,10 +233,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 		{
 			description: "all valid, skip",
 			skipFunc: func(id string) bool {
-				if id == "3" {
-					return true
-				}
-				return false
+				return id == "3"
 			},
 			events: []interpreter.Event{
 				interpreter.Event{
@@ -299,10 +296,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 		{
 			description: "invalid-skip",
 			skipFunc: func(id string) bool {
-				if id == "4" {
-					return true
-				}
-				return false
+				return id == "4"
 			},
 			events: []interpreter.Event{
 				interpreter.Event{
@@ -369,10 +363,7 @@ func TestSessionOfflineValidator(t *testing.T) {
 		{
 			description: "invalid with skip",
 			skipFunc: func(id string) bool {
-				if id == "5" {
-					return true
-				}
-				return false
+				return id == "5"
 			},
 			events: []interpreter.Event{
 				interpreter.Event{
@@ -454,10 +445,7 @@ func TestSessionOfflineValidator(t *testing.T) {
 		{
 			description: "valid with skip",
 			skipFunc: func(id string) bool {
-				if id == "5" {
-					return true
-				}
-				return false
+				return id == "5"
 			},
 			events: []interpreter.Event{
 				interpreter.Event{
@@ -619,10 +607,7 @@ func TestDetermineError(t *testing.T) {
 			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true},
 			onlineEvents: map[string]bool{"2": true, "3": true},
 			skipFunc: func(id string) bool {
-				if id == "1" {
-					return true
-				}
-				return false
+				return id == "1"
 			},
 			expectedValid: true,
 		},
@@ -641,10 +626,7 @@ func TestDetermineError(t *testing.T) {
 			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true, "4": true},
 			onlineEvents: map[string]bool{"2": true},
 			skipFunc: func(id string) bool {
-				if id == "1" {
-					return true
-				}
-				return false
+				return id == "1"
 			},
 			expectedValid:         false,
 			expectedInvalidFields: []string{"3", "4"},
