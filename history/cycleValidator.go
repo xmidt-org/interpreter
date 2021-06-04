@@ -42,8 +42,15 @@ func MetadataValidator(fields []string, checkWithinCycle bool) CycleValidatorFun
 			return true, nil
 		}
 
+		var err error
+		if checkWithinCycle {
+			err = fmt.Errorf("%w among same boot-time events", ErrInconsistentMetadata)
+		} else {
+			err = ErrInconsistentMetadata
+		}
+
 		return false, CycleValidationErr{
-			OriginalErr:   fmt.Errorf("%w: check among same boot-time events: %v", ErrInconsistentMetadata, checkWithinCycle),
+			OriginalErr:   err,
 			InvalidFields: incorrectFields,
 			ErrorTag:      validation.InconsistentMetadata,
 		}
