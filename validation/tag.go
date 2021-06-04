@@ -16,25 +16,25 @@ func (t Tag) String() string {
 const (
 	Unknown Tag = iota
 	Pass
-	MultipleTags
-	InconsistentDeviceID
-	InvalidBootTime
-	MissingBootTime
-	OldBootTime
-	NewerBootTimeFound
-	InvalidBootDuration
-	FastBoot
-	InvalidBirthdate
-	MisalignedBirthdate
-	InvalidDestination
-	NonEvent
-	InvalidEventType
-	EventTypeMismatch
-	DuplicateEvent
-	InconsistentMetadata
-	RepeatedTransactionUUID
-	MissingOnlineEvent
-	MissingOfflineEvent
+	MultipleTags            // used for multiple errors or cases where there are multiple error tags
+	InconsistentDeviceID    // occurrences of device id in the event is inconsistent
+	InvalidBootTime         // boot-time is either too far in the past or too far in the future
+	MissingBootTime         // boot-time does not exist in the event's metadata
+	OldBootTime             // boot-time is suspiciously old but not old enough to be deemed invalid
+	NewerBootTimeFound      // event does not have the newest boot-time and therefore is an old event
+	InvalidBootDuration     // default tag when event destination's unix timestamps are not in proper time range of event boot-time
+	FastBoot                // event destination's unix timestamps are too close to the boot-time of the event
+	InvalidBirthdate        // birthdate does not fall within a certain time range
+	MisalignedBirthdate     // birthdate is not within a certain time range of the timestamps in the event destination
+	InvalidDestination      // default tag when there is something wrong with the event destination
+	NonEvent                // not an event
+	InvalidEventType        // event type is not one of the possible event types
+	EventTypeMismatch       // event type does not match what is being searched for
+	DuplicateEvent          // duplicate event detected
+	InconsistentMetadata    // metadata values for certain metadata keys are inconsistent
+	RepeatedTransactionUUID // multiple events in an event list have the same transcation uuid
+	MissingOnlineEvent      // session is missing online event
+	MissingOfflineEvent     // session is missing offline event
 )
 
 const (
