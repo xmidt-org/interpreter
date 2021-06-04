@@ -249,7 +249,11 @@ func BootDurationValidator(minDuration time.Duration) ValidatorFunc {
 
 // EventTypeValidator returns a ValidatorFunc that validates that the event-type provided in the destination
 // matches one of the possible outcomes.
-func EventTypeValidator() ValidatorFunc {
+func EventTypeValidator(eventTypes []string) ValidatorFunc {
+	possibleEventTypes := make(map[string]bool)
+	for _, eventType := range eventTypes {
+		possibleEventTypes[eventType] = true
+	}
 	return func(e interpreter.Event) (bool, error) {
 		eventType, err := e.EventType()
 		if err != nil {
@@ -261,7 +265,7 @@ func EventTypeValidator() ValidatorFunc {
 			}
 		}
 
-		if len(eventType) == 0 || !interpreter.EventTypes[eventType] {
+		if len(eventType) == 0 || !possibleEventTypes[eventType] {
 			return false, InvalidDestinationErr{
 				OriginalErr: ErrInvalidEventType,
 				Destination: e.Destination,

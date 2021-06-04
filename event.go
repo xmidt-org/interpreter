@@ -56,18 +56,6 @@ var (
 	OnlineEventType        = "online"
 	OfflineEventType       = "offline"
 	RebootPendingEventType = "reboot-pending"
-
-	// EventTypes lists all of the possible device status events.
-	EventTypes = map[string]bool{
-		"reboot-pending":              true,
-		"offline":                     true,
-		"online":                      true,
-		"operational":                 true,
-		"fully-manageable":            true,
-		"non-operational":             true,
-		"firmware-download-started":   true,
-		"firmware-download-completed": true,
-	}
 )
 
 // Event is the struct that contains the wrp.Message fields along with the birthdate

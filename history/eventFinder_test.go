@@ -15,7 +15,6 @@ import (
 
 type testEvent struct {
 	event interpreter.Event
-	match bool
 	valid bool
 	err   error
 }
