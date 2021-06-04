@@ -190,6 +190,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 	tests := []struct {
 		description   string
 		events        []interpreter.Event
+		skipFunc      func(string) bool
 		expectedValid bool
 		expectedIDs   []string
 	}{
@@ -199,7 +200,8 @@ func TestSessionOnlineValidator(t *testing.T) {
 			expectedValid: true,
 		},
 		{
-			description: "all valid",
+			description: "all valid, no skip",
+			skipFunc:    func(id string) bool { return false },
 			events: []interpreter.Event{
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
@@ -229,7 +231,73 @@ func TestSessionOnlineValidator(t *testing.T) {
 			expectedValid: true,
 		},
 		{
-			description: "invalid",
+			description: "all valid, skip",
+			skipFunc: func(id string) bool {
+				return id == "3"
+			},
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "5",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "3",
+				},
+			},
+			expectedValid: true,
+		},
+		{
+			description: "invalid-no skip",
+			skipFunc: func(id string) bool {
+				return false
+			},
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "3",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "4",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "5",
+				},
+			},
+			expectedValid: false,
+			expectedIDs:   []string{"2", "3"},
+		},
+		{
+			description: "invalid-skip",
+			skipFunc: func(id string) bool {
+				return id == "4"
+			},
 			events: []interpreter.Event{
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
@@ -261,11 +329,10 @@ func TestSessionOnlineValidator(t *testing.T) {
 		},
 	}
 
-	validator := SessionOnlineValidator()
-
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
+			validator := SessionOnlineValidator(tc.skipFunc)
 			valid, err := validator.Valid(tc.events)
 			assert.Equal(tc.expectedValid, valid)
 			if !tc.expectedValid {
@@ -281,12 +348,10 @@ func TestSessionOnlineValidator(t *testing.T) {
 }
 
 func TestSessionOfflineValidator(t *testing.T) {
-	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
-	assert.Nil(t, err)
-
 	tests := []struct {
 		description   string
 		events        []interpreter.Event
+		skipFunc      func(string) bool
 		expectedValid bool
 		expectedIDs   []string
 	}{
@@ -296,113 +361,141 @@ func TestSessionOfflineValidator(t *testing.T) {
 			expectedValid: true,
 		},
 		{
-			description: "invalid",
+			description: "invalid with skip",
+			skipFunc: func(id string) bool {
+				return id == "5"
+			},
 			events: []interpreter.Event{
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
 					SessionID:   "1",
-					Birthdate:   now.Add(-5 * time.Hour).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/some-event",
 					SessionID:   "1",
-					Birthdate:   now.Add(-4 * time.Hour).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/offline",
 					SessionID:   "1",
-					Birthdate:   now.Add(-3 * time.Hour).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
 					SessionID:   "2",
-					Birthdate:   now.Add(-20 * time.Minute).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
-					Birthdate:   now.Add(-15 * time.Minute).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "non-event",
 					SessionID:   "3",
-					Birthdate:   now.Add(-10 * time.Minute).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
 					SessionID:   "5",
-					Birthdate:   now.UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/some-event",
 					SessionID:   "4",
-					Birthdate:   now.Add(-5 * time.Minute).UnixNano(),
 				},
 			},
 			expectedValid: false,
 			expectedIDs:   []string{"2", "4"},
 		},
 		{
-			description: "valid",
+			description: "invalid without skip",
+			skipFunc: func(id string) bool {
+				return false
+			},
 			events: []interpreter.Event{
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
 					SessionID:   "1",
-					Birthdate:   now.Add(-5 * time.Hour).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/some-event",
 					SessionID:   "1",
-					Birthdate:   now.Add(-4 * time.Hour).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/offline",
 					SessionID:   "1",
-					Birthdate:   now.Add(-3 * time.Hour).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
 					SessionID:   "2",
-					Birthdate:   now.Add(-20 * time.Minute).UnixNano(),
-				},
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/offline",
-					SessionID:   "2",
-					Birthdate:   now.Add(-20 * time.Minute).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
-					Birthdate:   now.Add(-15 * time.Minute).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "non-event",
 					SessionID:   "3",
-					Birthdate:   now.Add(-10 * time.Minute).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
 					SessionID:   "5",
-					Birthdate:   now.UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/some-event",
 					SessionID:   "4",
-					Birthdate:   now.Add(-5 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: false,
+			expectedIDs:   []string{"2", "4", "5"},
+		},
+		{
+			description: "valid with skip",
+			skipFunc: func(id string) bool {
+				return id == "5"
+			},
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "3",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "5",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "4",
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/offline",
 					SessionID:   "4",
-					Birthdate:   now.Add(-5 * time.Minute).UnixNano(),
 				},
 			},
 			expectedValid: true,
 		},
 	}
 
-	validator := SessionOfflineValidator()
-
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
+			validator := SessionOfflineValidator(tc.skipFunc)
 			valid, err := validator.Valid(tc.events)
 			assert.Equal(tc.expectedValid, valid)
 			if !tc.expectedValid {
@@ -490,6 +583,70 @@ func TestDetermineMetadataValues(t *testing.T) {
 	}
 
 }
+
+func TestDetermineError(t *testing.T) {
+	tests := []struct {
+		description           string
+		sessionIDs            map[string]bool
+		onlineEvents          map[string]bool
+		skipFunc              func(string) bool
+		expectedValid         bool
+		expectedInvalidFields []string
+	}{
+		{
+			description:  "valid without skip",
+			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true},
+			onlineEvents: map[string]bool{"1": true, "2": true, "3": true},
+			skipFunc: func(id string) bool {
+				return false
+			},
+			expectedValid: true,
+		},
+		{
+			description:  "valid with skip",
+			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true},
+			onlineEvents: map[string]bool{"2": true, "3": true},
+			skipFunc: func(id string) bool {
+				return id == "1"
+			},
+			expectedValid: true,
+		},
+		{
+			description:  "invalid without skip",
+			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true, "4": true},
+			onlineEvents: map[string]bool{"2": true},
+			skipFunc: func(id string) bool {
+				return false
+			},
+			expectedValid:         false,
+			expectedInvalidFields: []string{"1", "3", "4"},
+		},
+		{
+			description:  "invalid with skip",
+			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true, "4": true},
+			onlineEvents: map[string]bool{"2": true},
+			skipFunc: func(id string) bool {
+				return id == "1"
+			},
+			expectedValid:         false,
+			expectedInvalidFields: []string{"3", "4"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			valid, invalidFields := determineError(tc.sessionIDs, tc.onlineEvents, tc.skipFunc)
+			assert.Equal(tc.expectedValid, valid)
+			if tc.expectedValid {
+				assert.Nil(invalidFields)
+			} else {
+				assert.ElementsMatch(tc.expectedInvalidFields, invalidFields)
+			}
+		})
+	}
+}
+
 func TestCheckMetadataValues(t *testing.T) {
 	tests := []struct {
 		description           string
