@@ -3,6 +3,7 @@ messageContents:
   - event:
       source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/offline"
+      sessionID: "4"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"
@@ -17,6 +18,7 @@ messageContents:
   - event:
       source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/fully-manageable/1620770757"
+      sessionID: "4"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"
@@ -31,6 +33,7 @@ messageContents:
   - event:
       source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/operational"
+      sessionID: "4"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"
@@ -44,7 +47,23 @@ messageContents:
     birthdateOffset: "-2m"
   - event:
       source: "mac:112233445566"
+      destination: "event:device-status/mac:112233445566/online"
+      sessionID: "4"
+      metadata:
+        - "hw-mac": "hw-mac-1"
+        - "hw-manufacturer": "manufacturer-1"
+        - "hw-model": "model-1"
+        - "hw-serial-number": "1"
+        - "partner-id": "partner-1"
+        - "fw-name": "fw-1"
+        - "hw-last-reboot-reason": "reboot-reason-1"
+        - "webpa-protocol": "protocol-1"
+    bootTimeOffset: "-10m"
+    birthdateOffset: "-3m"
+  - event:
+      source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/offline"
+      sessionID: "3"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"
@@ -59,6 +78,7 @@ messageContents:
   - event:
       source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/offline/mac:123456"
+      sessionID: "3"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"
@@ -73,6 +93,7 @@ messageContents:
   - event:
       source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/online"
+      sessionID: "3"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"
@@ -87,6 +108,7 @@ messageContents:
   - event:
       source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/offline"
+      sessionID: "2"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"
@@ -101,6 +123,8 @@ messageContents:
   - event:
       source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/some-event"
+      sessionID: "2"
+      transactionUUID: "8"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"
@@ -115,6 +139,8 @@ messageContents:
   - event:
       source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/offline"
+      sessionID: "1"
+      transactionUUID: "8"
       metadata:
         - "hw-mac": "hw-mac-1"
         - "hw-manufacturer": "manufacturer-1"

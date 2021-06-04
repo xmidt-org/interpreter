@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,9 +20,7 @@ const (
 )
 
 type Config struct {
-	Codex              CodexConfig
 	FilePath           string
-	UseJSON            bool
 	MetadataValidators []MetadataKey
 }
 
@@ -45,10 +42,6 @@ func main() {
 	app := fx.New(
 		arrange.ForViper(v),
 		arrange.Provide(Config{}),
-		Provide(),
-		fx.Provide(
-			arrange.UnmarshalKey("codex", CodexConfig{}),
-		),
 		fx.Invoke(
 			readCommandLine,
 		),
@@ -64,43 +57,33 @@ func main() {
 	}
 }
 
-func readCommandLine(config Config, client *CodexClient) {
+func readCommandLine(config Config) {
 	validators := createValidators(config)
-	if config.UseJSON {
-		var events []interpreter.Event
-		data, err := ioutil.ReadFile(config.FilePath)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "unable to read from file")
-			os.Exit(1)
-		}
-
-		if err = json.Unmarshal(data, &events); err != nil {
-			fmt.Fprintf(os.Stderr, "unable to unmarshal json: %v", err)
-			os.Exit(1)
-		}
-
-		errs := runValidators(events, validators)
-		printErrors(errs)
-		os.Exit(0)
+	var events []interpreter.Event
+	var filePath string
+	if len(os.Args) > 1 {
+		filePath = os.Args[1]
 	} else {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			id := scanner.Text()
-			if len(id) > 0 {
-				events := client.getEvents(id)
-				errs := runValidators(events, validators)
-				printErrors(errs)
-			}
-		}
-
-		if err := scanner.Err(); err != nil {
-			fmt.Fprintln(os.Stderr, "reading standard input:", err)
-		}
+		filePath = config.FilePath
 	}
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "unable to read from file")
+		os.Exit(1)
+	}
+
+	if err = json.Unmarshal(data, &events); err != nil {
+		fmt.Fprintf(os.Stderr, "unable to unmarshal json: %v", err)
+		os.Exit(1)
+	}
+
+	errs := runValidators(events, validators)
+	printErrors(errs)
+	os.Exit(0)
 }
 
 func createValidators(config Config) []history.CycleValidatorFunc {
-	validators := []history.CycleValidatorFunc{history.TransactionUUIDValidator()}
+	validators := []history.CycleValidatorFunc{history.TransactionUUIDValidator(), history.SessionOnlineValidator(), history.SessionOfflineValidator()}
 	var withinCycleChecks []string
 	var wholeCycleChecks []string
 	for _, metadata := range config.MetadataValidators {
