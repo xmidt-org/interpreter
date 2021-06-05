@@ -89,7 +89,7 @@ func main() {
 	if len(os.Args) > 1 {
 		configFile = os.Args[1]
 	} else {
-		configFile = fmt.Sprintf("./%s", applicationName)
+		configFile = fmt.Sprintf("./%s.yaml", applicationName)
 	}
 
 	v := viper.New()

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,23 +9,18 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
-	"github.com/xmidt-org/arrange"
 	"github.com/xmidt-org/interpreter"
 	"github.com/xmidt-org/interpreter/history"
 	"github.com/xmidt-org/interpreter/validation"
-	"go.uber.org/fx"
 )
 
 const (
 	applicationName = "eventsParser"
+	defaultFilePath = "./events.json"
 )
 
 type Config struct {
-	Codex    CodexConfig
 	FilePath string
-	UseJSON  bool
 }
 
 type BootCycle struct {
@@ -36,71 +30,35 @@ type BootCycle struct {
 }
 
 func main() {
-	v := viper.New()
-	v.AddConfigPath(".")
-	v.SetConfigName(applicationName)
-	err := v.ReadInConfig()
+
+	var filePath string
+	if len(os.Args) == 2 {
+		filePath = os.Args[1]
+	} else {
+		filePath = defaultFilePath
+	}
+
+	readCommandLine(filePath)
+}
+
+func readCommandLine(filePath string) {
+	validators := createValidators()
+	comparator := testComparator()
+	var events []interpreter.Event
+	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read in viper config: %v\n", err.Error())
+		fmt.Fprintln(os.Stderr, "unable to read from file")
 		os.Exit(1)
 	}
 
-	app := fx.New(
-		arrange.ForViper(v),
-		arrange.Provide(Config{}),
-		Provide(),
-		fx.Provide(
-			arrange.UnmarshalKey("codex", CodexConfig{}),
-		),
-		fx.Invoke(
-			readCommandLine,
-		),
-	)
-
-	if err := app.Err(); err == nil {
-		app.Run()
-	} else if errors.Is(err, pflag.ErrHelp) {
-		return
-	} else {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+	if err = json.Unmarshal(data, &events); err != nil {
+		fmt.Fprintf(os.Stderr, "unable to unmarshal json: %v", err)
+		os.Exit(1)
 	}
-}
 
-func readCommandLine(config Config, client *CodexClient) {
-	validators := createValidators()
-	comparator := testComparator()
-	if config.UseJSON {
-		var events []interpreter.Event
-		data, err := ioutil.ReadFile(config.FilePath)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "unable to read from file")
-			os.Exit(1)
-		}
-
-		if err = json.Unmarshal(data, &events); err != nil {
-			fmt.Fprintf(os.Stderr, "unable to unmarshal json: %v", err)
-			os.Exit(1)
-		}
-
-		bootCycles := parseIntoCycles(events, comparator, validators)
-		printBootCycles(bootCycles)
-		os.Exit(0)
-	} else {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			id := scanner.Text()
-			if len(id) > 0 {
-				events := client.getEvents(id)
-				bootCycles := parseIntoCycles(events, comparator, validators)
-				printBootCycles(bootCycles)
-			}
-		}
-
-		if err := scanner.Err(); err != nil {
-			fmt.Fprintln(os.Stderr, "reading standard input:", err)
-		}
-	}
+	bootCycles := parseIntoCycles(events, comparator, validators)
+	printBootCycles(bootCycles)
+	os.Exit(0)
 }
 
 func parseIntoCycles(events []interpreter.Event, comparator history.Comparator, validator validation.Validator) []BootCycle {
@@ -109,7 +67,7 @@ func parseIntoCycles(events []interpreter.Event, comparator history.Comparator, 
 	parser := history.BootCycleParser(comparator, validator)
 	seenBootTimes := make(map[int64]bool)
 	for _, event := range events {
-		if boottime, err := event.BootTime(); err == nil && !seenBootTimes[boottime] != true {
+		if boottime, err := event.BootTime(); err == nil && !seenBootTimes[boottime] {
 			seenBootTimes[boottime] = true
 			parsedEvents, err := parser.Parse(events, event)
 			var ids []string
