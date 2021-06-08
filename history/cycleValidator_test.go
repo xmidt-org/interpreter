@@ -584,6 +584,96 @@ func TestDetermineMetadataValues(t *testing.T) {
 
 }
 
+func TestParseSessions(t *testing.T) {
+	tests := []struct {
+		description string
+		events      []interpreter.Event
+		expectedMap map[string]bool
+	}{
+		{
+			description: "empty list",
+			events:      []interpreter.Event{},
+			expectedMap: make(map[string]bool),
+		},
+		{
+			description: "all valid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "5",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "3",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "3",
+				},
+			},
+			expectedMap: map[string]bool{
+				"1": true,
+				"2": true,
+				"3": true,
+			},
+		},
+		{
+			description: "some valid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "5",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "3",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "3",
+				},
+			},
+			expectedMap: map[string]bool{
+				"1": false,
+				"2": true,
+				"3": true,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			sessionMap := parseSessions(tc.events, "online")
+			assert.Equal(tc.expectedMap, sessionMap)
+		})
+	}
+}
+
 func TestFindSessionsWithoutEvent(t *testing.T) {
 	tests := []struct {
 		description           string

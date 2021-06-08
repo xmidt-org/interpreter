@@ -95,23 +95,7 @@ func TransactionUUIDValidator() CycleValidatorFunc {
 // takes in a session ID and returns true if that session is still valid even if it does not have an online event.
 func SessionOnlineValidator(excludeFunc func(id string) bool) CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
-		onlineEvents := make(map[string]bool)
-		for _, event := range events {
-			sessionID := event.SessionID
-			eventType, err := event.EventType()
-			if len(sessionID) == 0 || err != nil {
-				continue
-			}
-
-			if _, found := onlineEvents[sessionID]; !found {
-				onlineEvents[sessionID] = false
-			}
-
-			if eventType == interpreter.OnlineEventType {
-				onlineEvents[sessionID] = true
-			}
-		}
-
+		onlineEvents := parseSessions(events, interpreter.OnlineEventType)
 		invalidIds := findSessionsWithoutEvent(onlineEvents, excludeFunc)
 		if len(invalidIds) == 0 {
 			return true, nil
@@ -136,24 +120,7 @@ func SessionOfflineValidator(excludeFunc func(id string) bool) CycleValidatorFun
 			return true, nil
 		}
 
-		offlineEvents := make(map[string]bool)
-		for _, event := range events {
-			sessionID := event.SessionID
-			eventType, err := event.EventType()
-			if len(sessionID) == 0 || err != nil {
-				continue
-			}
-
-			if _, found := offlineEvents[sessionID]; !found {
-				offlineEvents[sessionID] = false
-			}
-
-			if eventType == interpreter.OfflineEventType {
-				offlineEvents[sessionID] = true
-			}
-
-		}
-
+		offlineEvents := parseSessions(events, interpreter.OfflineEventType)
 		invalidIds := findSessionsWithoutEvent(offlineEvents, excludeFunc)
 		if len(invalidIds) == 0 {
 			return true, nil
@@ -167,6 +134,29 @@ func SessionOfflineValidator(excludeFunc func(id string) bool) CycleValidatorFun
 		}
 
 	}
+}
+
+// go through list of events and save all session ids seen in the list as well as whether that session
+// has the event being looked for.
+func parseSessions(events []interpreter.Event, searchedEventType string) map[string]bool {
+	eventsMap := make(map[string]bool)
+	for _, event := range events {
+		sessionID := event.SessionID
+		eventType, err := event.EventType()
+		if len(sessionID) == 0 || err != nil {
+			continue
+		}
+
+		if _, found := eventsMap[sessionID]; !found {
+			eventsMap[sessionID] = false
+		}
+
+		if eventType == searchedEventType {
+			eventsMap[sessionID] = true
+		}
+
+	}
+	return eventsMap
 }
 
 func findSessionsWithoutEvent(eventsMap map[string]bool, exclude func(id string) bool) []string {
