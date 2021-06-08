@@ -112,15 +112,16 @@ func SessionOnlineValidator(excludeFunc func(id string) bool) CycleValidatorFunc
 			}
 		}
 
-		if invalidIds := findSessionsWithoutEvent(onlineEvents, excludeFunc); len(invalidIds) == 0 {
+		invalidIds := findSessionsWithoutEvent(onlineEvents, excludeFunc)
+		if len(invalidIds) == 0 {
 			return true, nil
-		} else {
-			return false, CycleValidationErr{
-				OriginalErr:       ErrMissingOnlineEvent,
-				ErrorDetailKey:    "session ids",
-				ErrorDetailValues: invalidIds,
-				ErrorTag:          validation.MissingOnlineEvent,
-			}
+		}
+
+		return false, CycleValidationErr{
+			OriginalErr:       ErrMissingOnlineEvent,
+			ErrorDetailKey:    "session ids",
+			ErrorDetailValues: invalidIds,
+			ErrorTag:          validation.MissingOnlineEvent,
 		}
 
 	}
@@ -153,16 +154,18 @@ func SessionOfflineValidator(excludeFunc func(id string) bool) CycleValidatorFun
 
 		}
 
-		if invalidIds := findSessionsWithoutEvent(offlineEvents, excludeFunc); len(invalidIds) == 0 {
+		invalidIds := findSessionsWithoutEvent(offlineEvents, excludeFunc)
+		if len(invalidIds) == 0 {
 			return true, nil
-		} else {
-			return false, CycleValidationErr{
-				OriginalErr:       ErrMissingOfflineEvent,
-				ErrorDetailKey:    "session ids",
-				ErrorDetailValues: invalidIds,
-				ErrorTag:          validation.MissingOfflineEvent,
-			}
 		}
+
+		return false, CycleValidationErr{
+			OriginalErr:       ErrMissingOfflineEvent,
+			ErrorDetailKey:    "session ids",
+			ErrorDetailValues: invalidIds,
+			ErrorTag:          validation.MissingOfflineEvent,
+		}
+
 	}
 }
 
