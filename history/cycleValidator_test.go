@@ -584,51 +584,125 @@ func TestDetermineMetadataValues(t *testing.T) {
 
 }
 
-func TestDetermineError(t *testing.T) {
+func TestParseSessions(t *testing.T) {
+	tests := []struct {
+		description string
+		events      []interpreter.Event
+		expectedMap map[string]bool
+	}{
+		{
+			description: "empty list",
+			events:      []interpreter.Event{},
+			expectedMap: make(map[string]bool),
+		},
+		{
+			description: "all valid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "5",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "3",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "3",
+				},
+			},
+			expectedMap: map[string]bool{
+				"1": true,
+				"2": true,
+				"3": true,
+			},
+		},
+		{
+			description: "some valid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "1",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "2",
+				},
+				interpreter.Event{
+					Destination: "non-event",
+					SessionID:   "5",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					SessionID:   "3",
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/some-event",
+					SessionID:   "3",
+				},
+			},
+			expectedMap: map[string]bool{
+				"1": false,
+				"2": true,
+				"3": true,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			sessionMap := parseSessions(tc.events, "online")
+			assert.Equal(tc.expectedMap, sessionMap)
+		})
+	}
+}
+
+func TestFindSessionsWithoutEvent(t *testing.T) {
 	tests := []struct {
 		description           string
-		sessionIDs            map[string]bool
-		onlineEvents          map[string]bool
+		events                map[string]bool
 		skipFunc              func(string) bool
-		expectedValid         bool
 		expectedInvalidFields []string
 	}{
 		{
-			description:  "valid without skip",
-			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true},
-			onlineEvents: map[string]bool{"1": true, "2": true, "3": true},
-			skipFunc: func(id string) bool {
-				return false
-			},
-			expectedValid: true,
+			description: "valid without skip",
+			events:      map[string]bool{"1": true, "2": true, "3": true},
 		},
 		{
-			description:  "valid with skip",
-			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true},
-			onlineEvents: map[string]bool{"2": true, "3": true},
+			description: "valid with skip",
+			events:      map[string]bool{"2": true, "3": true, "1": false},
 			skipFunc: func(id string) bool {
 				return id == "1"
 			},
-			expectedValid: true,
 		},
 		{
-			description:  "invalid without skip",
-			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true, "4": true},
-			onlineEvents: map[string]bool{"2": true},
-			skipFunc: func(id string) bool {
-				return false
-			},
-			expectedValid:         false,
+			description:           "invalid without skip",
+			events:                map[string]bool{"2": true, "1": false, "3": false, "4": false},
 			expectedInvalidFields: []string{"1", "3", "4"},
 		},
 		{
-			description:  "invalid with skip",
-			sessionIDs:   map[string]bool{"1": true, "2": true, "3": true, "4": true},
-			onlineEvents: map[string]bool{"2": true},
+			description: "invalid with skip",
+			events:      map[string]bool{"1": false, "2": true, "3": false, "4": false},
 			skipFunc: func(id string) bool {
 				return id == "1"
 			},
-			expectedValid:         false,
 			expectedInvalidFields: []string{"3", "4"},
 		},
 	}
@@ -636,13 +710,9 @@ func TestDetermineError(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			valid, invalidFields := determineError(tc.sessionIDs, tc.onlineEvents, tc.skipFunc)
-			assert.Equal(tc.expectedValid, valid)
-			if tc.expectedValid {
-				assert.Nil(invalidFields)
-			} else {
-				assert.ElementsMatch(tc.expectedInvalidFields, invalidFields)
-			}
+			invalidFields := findSessionsWithoutEvent(tc.events, tc.skipFunc)
+			assert.Equal(len(tc.expectedInvalidFields), len(invalidFields))
+			assert.ElementsMatch(tc.expectedInvalidFields, invalidFields)
 		})
 	}
 }
