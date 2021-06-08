@@ -20,6 +20,7 @@ package history
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/xmidt-org/interpreter"
 	"github.com/xmidt-org/interpreter/validation"
@@ -98,9 +99,10 @@ func (e EventFinderErr) Tag() validation.Tag {
 
 // CycleValidationErr is an error returned by validators for list of events.
 type CycleValidationErr struct {
-	OriginalErr   error
-	ErrorTag      validation.Tag
-	InvalidFields []string
+	OriginalErr       error
+	ErrorTag          validation.Tag
+	ErrorDetailKey    string
+	ErrorDetailValues []string
 }
 
 func (e CycleValidationErr) Error() string {
@@ -131,5 +133,26 @@ func (e CycleValidationErr) Unwrap() error {
 
 // Fields returns the fields that resulted in the error.
 func (e CycleValidationErr) Fields() []string {
-	return e.InvalidFields
+	return e.ErrorDetailValues
+}
+
+// ErrorDetails returns the ErrorCauseKey and ErrorCauseValues in a string.
+func (e CycleValidationErr) ErrorDetails() string {
+	var output strings.Builder
+	var key string
+	if len(e.ErrorDetailKey) == 0 {
+		key = e.ErrorTag.String()
+	} else {
+		key = e.ErrorDetailKey
+	}
+	output.Write([]byte(fmt.Sprintf("%s: [", key)))
+	for i, val := range e.ErrorDetailValues {
+		if i > 0 {
+			output.WriteRune(',')
+			output.WriteRune(' ')
+		}
+		output.WriteString(val)
+	}
+	output.WriteRune(']')
+	return output.String()
 }

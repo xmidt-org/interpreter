@@ -49,9 +49,10 @@ func MetadataValidator(fields []string, checkWithinCycle bool) CycleValidatorFun
 		}
 
 		return false, CycleValidationErr{
-			OriginalErr:   err,
-			InvalidFields: incorrectFields,
-			ErrorTag:      validation.InconsistentMetadata,
+			OriginalErr:       err,
+			ErrorDetailKey:    "inconsistent metadata keys",
+			ErrorDetailValues: incorrectFields,
+			ErrorTag:          validation.InconsistentMetadata,
 		}
 	}
 }
@@ -61,27 +62,30 @@ func MetadataValidator(fields []string, checkWithinCycle bool) CycleValidatorFun
 func TransactionUUIDValidator() CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
 		ids := make(map[string]bool)
-		repeatedIds := make(map[string]bool)
-		var repeatIDSlice []string
 		for _, event := range events {
-			if ids[event.TransactionUUID] {
-				if !repeatedIds[event.TransactionUUID] {
-					repeatIDSlice = append(repeatIDSlice, event.TransactionUUID)
-					repeatedIds[event.TransactionUUID] = true
-				}
+			if _, found := ids[event.TransactionUUID]; !found {
+				ids[event.TransactionUUID] = false
 			} else {
 				ids[event.TransactionUUID] = true
 			}
 		}
 
-		if len(repeatedIds) == 0 {
+		var repeatIDSlice []string
+		for id, repeated := range ids {
+			if repeated {
+				repeatIDSlice = append(repeatIDSlice, id)
+			}
+		}
+
+		if len(repeatIDSlice) == 0 {
 			return true, nil
 		}
 
 		return false, CycleValidationErr{
-			OriginalErr:   ErrRepeatID,
-			InvalidFields: repeatIDSlice,
-			ErrorTag:      validation.RepeatedTransactionUUID,
+			OriginalErr:       ErrRepeatID,
+			ErrorDetailKey:    "repeated uuids",
+			ErrorDetailValues: repeatIDSlice,
+			ErrorTag:          validation.RepeatedTransactionUUID,
 		}
 	}
 }
@@ -91,31 +95,17 @@ func TransactionUUIDValidator() CycleValidatorFunc {
 // takes in a session ID and returns true if that session is still valid even if it does not have an online event.
 func SessionOnlineValidator(excludeFunc func(id string) bool) CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
-		onlineEvents := make(map[string]bool)
-		sessionIDs := make(map[string]bool)
-
-		for _, event := range events {
-			sessionID := event.SessionID
-			eventType, err := event.EventType()
-			if len(sessionID) == 0 || err != nil {
-				continue
-			}
-
-			sessionIDs[sessionID] = true
-
-			if eventType == interpreter.OnlineEventType {
-				onlineEvents[sessionID] = true
-			}
+		onlineEvents := parseSessions(events, interpreter.OnlineEventType)
+		invalidIds := findSessionsWithoutEvent(onlineEvents, excludeFunc)
+		if len(invalidIds) == 0 {
+			return true, nil
 		}
 
-		if valid, invalidIds := determineError(sessionIDs, onlineEvents, excludeFunc); valid {
-			return true, nil
-		} else {
-			return false, CycleValidationErr{
-				OriginalErr:   ErrMissingOnlineEvent,
-				InvalidFields: invalidIds,
-				ErrorTag:      validation.MissingOnlineEvent,
-			}
+		return false, CycleValidationErr{
+			OriginalErr:       ErrMissingOnlineEvent,
+			ErrorDetailKey:    "session ids",
+			ErrorDetailValues: invalidIds,
+			ErrorTag:          validation.MissingOnlineEvent,
 		}
 
 	}
@@ -130,58 +120,66 @@ func SessionOfflineValidator(excludeFunc func(id string) bool) CycleValidatorFun
 			return true, nil
 		}
 
-		offlineEvents := make(map[string]bool)
-		sessionIDs := make(map[string]bool)
-		for _, event := range events {
-			sessionID := event.SessionID
-			eventType, err := event.EventType()
-			if len(sessionID) == 0 || err != nil {
-				continue
-			}
-
-			sessionIDs[sessionID] = true
-
-			if eventType == interpreter.OfflineEventType {
-				offlineEvents[sessionID] = true
-			}
-
-		}
-
-		if valid, invalidIds := determineError(sessionIDs, offlineEvents, excludeFunc); valid {
+		offlineEvents := parseSessions(events, interpreter.OfflineEventType)
+		invalidIds := findSessionsWithoutEvent(offlineEvents, excludeFunc)
+		if len(invalidIds) == 0 {
 			return true, nil
-		} else {
-			return false, CycleValidationErr{
-				OriginalErr:   ErrMissingOfflineEvent,
-				InvalidFields: invalidIds,
-				ErrorTag:      validation.MissingOfflineEvent,
-			}
 		}
+
+		return false, CycleValidationErr{
+			OriginalErr:       ErrMissingOfflineEvent,
+			ErrorDetailKey:    "session ids",
+			ErrorDetailValues: invalidIds,
+			ErrorTag:          validation.MissingOfflineEvent,
+		}
+
 	}
 }
 
-func determineError(sessionIDs map[string]bool, existingEvents map[string]bool, exclude func(id string) bool) (bool, []string) {
+// go through list of events and save all session ids seen in the list as well as whether that session
+// has the event being looked for.
+func parseSessions(events []interpreter.Event, searchedEventType string) map[string]bool {
+	eventsMap := make(map[string]bool)
+	for _, event := range events {
+		sessionID := event.SessionID
+		eventType, err := event.EventType()
+		if len(sessionID) == 0 || err != nil {
+			continue
+		}
+
+		if _, found := eventsMap[sessionID]; !found {
+			eventsMap[sessionID] = false
+		}
+
+		if eventType == searchedEventType {
+			eventsMap[sessionID] = true
+		}
+
+	}
+	return eventsMap
+}
+
+func findSessionsWithoutEvent(eventsMap map[string]bool, exclude func(id string) bool) []string {
+	if exclude == nil {
+		exclude = func(_ string) bool {
+			return false
+		}
+	}
+
 	var missingEvents []string
-	for id := range sessionIDs {
-		if !existingEvents[id] && !exclude(id) {
+	for id, exist := range eventsMap {
+		if !exist && !exclude(id) {
 			missingEvents = append(missingEvents, id)
 		}
 	}
 
-	if len(missingEvents) == 0 {
-		return true, nil
-	}
-
-	return false, missingEvents
+	return missingEvents
 }
 
 func determineMetadataValues(fields []string, event interpreter.Event) map[string]string {
 	values := make(map[string]string)
 	for _, field := range fields {
-		if val, ok := event.Metadata[field]; ok {
-			values[field] = val
-		} else {
-			values[field] = ""
-		}
+		values[field] = event.Metadata[field]
 	}
 
 	return values
@@ -192,9 +190,11 @@ func validateMetadata(keys []string, events []interpreter.Event) []string {
 		return nil
 	}
 
+	// save what the metadata values are supposed to be for all following events
 	metadataVals := determineMetadataValues(keys, events[0])
 	incorrectFieldsMap := make(map[string]bool)
 	for _, event := range events {
+		// check that each event's metadata values are what they are supposed to be
 		incorrectFieldsMap = checkMetadataValues(metadataVals, incorrectFieldsMap, event)
 	}
 
@@ -211,11 +211,13 @@ func validateMetadata(keys []string, events []interpreter.Event) []string {
 
 }
 
+// validate that metdata is the same within events with the same boot-time
 func validateMetadataWithinCycle(keys []string, events []interpreter.Event) []string {
 	if len(events) == 0 {
 		return nil
 	}
 
+	// map saving the metadata values that all events with a certain boot-time must have
 	metadataVals := make(map[int64]map[string]string)
 	incorrectFieldsMap := make(map[string]bool)
 	for _, event := range events {
@@ -225,12 +227,15 @@ func validateMetadataWithinCycle(keys []string, events []interpreter.Event) []st
 		}
 
 		expectedVals, found := metadataVals[boottime]
+		// if metadata values for that boot-time does not exist, this is the first time we've encountered
+		// an event with this boot-time, so find the values of the metadata keys and save them in the map
+		// to reference later.
 		if !found {
-			expectedVals = determineMetadataValues(keys, event)
-			metadataVals[boottime] = expectedVals
+			metadataVals[boottime] = determineMetadataValues(keys, event)
 			continue
 		}
 
+		// compare the event's metadata values to the correct metadata values.
 		incorrectFieldsMap = checkMetadataValues(expectedVals, incorrectFieldsMap, event)
 	}
 
@@ -247,12 +252,10 @@ func validateMetadataWithinCycle(keys []string, events []interpreter.Event) []st
 
 }
 
+// compare an event's metadata values with the values it is supposed to have
 func checkMetadataValues(expectedMetadataVals map[string]string, incorrectMetadata map[string]bool, event interpreter.Event) map[string]bool {
 	for key, val := range expectedMetadataVals {
-		v, found := event.Metadata[key]
-		if found && v != val {
-			incorrectMetadata[key] = true
-		} else if !found && len(val) > 0 {
+		if event.Metadata[key] != val {
 			incorrectMetadata[key] = true
 		}
 	}
