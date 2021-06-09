@@ -39,7 +39,7 @@ func BootCycleParser(comparator Comparator, eventValidator validation.Validator)
 			// If comparator returns true, it means we should stop parsing
 			// because there is something wrong with currentEvent
 			if match, err := comparator.Compare(event, currentEvent); match {
-				return []interpreter.Event{}, EventFinderErr{OriginalErr: err}
+				return []interpreter.Event{}, err
 			}
 
 			if bootTime > lastBoottime && bootTime < latestBootTime {
