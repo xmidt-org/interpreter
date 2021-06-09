@@ -95,8 +95,8 @@ func TransactionUUIDValidator() CycleValidatorFunc {
 // takes in a session ID and returns true if that session is still valid even if it does not have an online event.
 func SessionOnlineValidator(excludeFunc func(id string) bool) CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
-		onlineEvents := parseSessions(events, interpreter.OnlineEventType)
-		invalidIds := findSessionsWithoutEvent(onlineEvents, excludeFunc)
+		sessionsWithOnline := parseSessions(events, interpreter.OnlineEventType)
+		invalidIds := findSessionsWithoutEvent(sessionsWithOnline, excludeFunc)
 		if len(invalidIds) == 0 {
 			return true, nil
 		}
@@ -120,8 +120,8 @@ func SessionOfflineValidator(excludeFunc func(id string) bool) CycleValidatorFun
 			return true, nil
 		}
 
-		offlineEvents := parseSessions(events, interpreter.OfflineEventType)
-		invalidIds := findSessionsWithoutEvent(offlineEvents, excludeFunc)
+		sessionsWithOffline := parseSessions(events, interpreter.OfflineEventType)
+		invalidIds := findSessionsWithoutEvent(sessionsWithOffline, excludeFunc)
 		if len(invalidIds) == 0 {
 			return true, nil
 		}
