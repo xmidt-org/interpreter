@@ -7,11 +7,6 @@ import (
 	"github.com/xmidt-org/interpreter/validation"
 )
 
-// EventsParser parses the relevant events from a device's history of events and returns those events.
-type EventsParser interface {
-	Parse(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error)
-}
-
 // EventsParserFunc is a function that returns the relevant events from a slice of events.
 type EventsParserFunc func([]interpreter.Event, interpreter.Event) ([]interpreter.Event, error)
 
@@ -44,7 +39,7 @@ func BootCycleParser(comparator Comparator, eventValidator validation.Validator)
 			// If comparator returns true, it means we should stop parsing
 			// because there is something wrong with currentEvent
 			if match, err := comparator.Compare(event, currentEvent); match {
-				return []interpreter.Event{}, EventFinderErr{OriginalErr: err}
+				return []interpreter.Event{}, err
 			}
 
 			if bootTime > lastBoottime && bootTime < latestBootTime {
