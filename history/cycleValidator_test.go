@@ -190,7 +190,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 	tests := []struct {
 		description   string
 		events        []interpreter.Event
-		skipFunc      ExcludeFunc
+		skipFunc      func(events []interpreter.Event, id string) bool
 		expectedValid bool
 		expectedIDs   []string
 	}{
@@ -351,7 +351,7 @@ func TestSessionOfflineValidator(t *testing.T) {
 	tests := []struct {
 		description   string
 		events        []interpreter.Event
-		skipFunc      ExcludeFunc
+		skipFunc      func(events []interpreter.Event, id string) bool
 		expectedValid bool
 		expectedIDs   []string
 	}{
@@ -678,7 +678,7 @@ func TestFindSessionsWithoutEvent(t *testing.T) {
 	tests := []struct {
 		description           string
 		events                map[string]bool
-		skipFunc              ExcludeFunc
+		skipFunc              func(events []interpreter.Event, id string) bool
 		expectedInvalidFields []string
 	}{
 		{

@@ -15,8 +15,6 @@ var (
 	ErrMissingOfflineEvent  = errors.New("session does not have offline event")
 )
 
-type ExcludeFunc func(events []interpreter.Event, id string) bool
-
 // CycleValidatorFunc is a function type that takes in a slice of events
 // and returns whether the slice of events is valid or not.
 type CycleValidatorFunc func(events []interpreter.Event) (valid bool, err error)
@@ -95,7 +93,7 @@ func TransactionUUIDValidator() CycleValidatorFunc {
 // SessionOnlineValidator returns a CycleValidatorFunc that validates that all sessions in the slice
 // (determined by sessionIDs) have an online event. It takes in excludeFunc, which is a function that
 // takes in a session ID and returns true if that session is still valid even if it does not have an online event.
-func SessionOnlineValidator(excludeFunc ExcludeFunc) CycleValidatorFunc {
+func SessionOnlineValidator(excludeFunc func(events []interpreter.Event, id string) bool) CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
 		sessionsWithOnline := parseSessions(events, interpreter.OnlineEventType)
 		invalidIds := findSessionsWithoutEvent(sessionsWithOnline, events, excludeFunc)
@@ -116,7 +114,7 @@ func SessionOnlineValidator(excludeFunc ExcludeFunc) CycleValidatorFunc {
 // SessionOfflineValidator returns a CycleValidatorFunc that validates that all sessions in the slice
 // (except for the most recent session) have an offline event. It takes in excludeFunc, which is a function that
 // takes in a session ID and returns true if that session is still valid even if it does not have an offline event.
-func SessionOfflineValidator(excludeFunc ExcludeFunc) CycleValidatorFunc {
+func SessionOfflineValidator(excludeFunc func(events []interpreter.Event, id string) bool) CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
 		if len(events) == 0 {
 			return true, nil
@@ -161,7 +159,7 @@ func parseSessions(events []interpreter.Event, searchedEventType string) map[str
 	return eventsMap
 }
 
-func findSessionsWithoutEvent(eventsMap map[string]bool, eventsList []interpreter.Event, exclude ExcludeFunc) []string {
+func findSessionsWithoutEvent(eventsMap map[string]bool, eventsList []interpreter.Event, exclude func(events []interpreter.Event, id string) bool) []string {
 	if exclude == nil {
 		exclude = func(_ []interpreter.Event, _ string) bool {
 			return false
