@@ -12,4 +12,4 @@ require (
 	go.uber.org/fx v1.13.1
 )
 
-replace github.com/xmidt-org/interpreter v0.0.3 => github.com/xmidt-org/interpreter v0.0.4-0.20210604185111-7d1867efaa8c
+replace github.com/xmidt-org/interpreter v0.0.3 => github.com/xmidt-org/interpreter v0.0.4-0.20210609173826-707cc39a8ff4
