@@ -17,6 +17,7 @@ const (
 	Unknown Tag = iota
 	Pass
 	MultipleTags            // used for multiple errors or cases where there are multiple error tags
+	MissingDeviceID         // device id is missing from the destination
 	InconsistentDeviceID    // occurrences of device id in the event is inconsistent
 	InvalidBootTime         // boot-time is either too far in the past or too far in the future
 	MissingBootTime         // boot-time does not exist in the event's metadata
@@ -41,6 +42,7 @@ const (
 	UnknownStr                 = "unknown"
 	PassStr                    = "pass"
 	MultipleTagsStr            = "multiple_tags"
+	MissingDeviceIDStr         = "missing_device_id"
 	InconsistentDeviceIDStr    = "inconsistent_device_id"
 	InvalidBootTimeStr         = "invalid_boot_time"
 	MissingBootTimeStr         = "missing_boot_time"
@@ -66,6 +68,7 @@ var (
 		Unknown:                 UnknownStr,
 		Pass:                    PassStr,
 		MultipleTags:            MultipleTagsStr,
+		MissingDeviceID:         MissingDeviceIDStr,
 		InconsistentDeviceID:    InconsistentDeviceIDStr,
 		InvalidBootTime:         InvalidBootTimeStr,
 		MissingBootTime:         MissingBootTimeStr,
@@ -90,6 +93,7 @@ var (
 		UnknownStr:                 Unknown,
 		PassStr:                    Pass,
 		MultipleTagsStr:            MultipleTags,
+		MissingDeviceIDStr:         MissingDeviceID,
 		InconsistentDeviceIDStr:    InconsistentDeviceID,
 		InvalidBootTimeStr:         InvalidBootTime,
 		MissingBootTimeStr:         MissingBootTime,
