@@ -233,6 +233,8 @@ github.com/xmidt-org/interpreter v0.0.4-0.20210604185111-7d1867efaa8c h1:vRvSMQc
 github.com/xmidt-org/interpreter v0.0.4-0.20210604185111-7d1867efaa8c/go.mod h1:1odXM9N0kIS5EKa5Yty+6SUqJ9umWVMhOjxNn44K5b0=
 github.com/xmidt-org/interpreter v0.0.4-0.20210609173826-707cc39a8ff4 h1:FQdg6E3eQZnbptkfJzvxlf8Wz84FbeeDC4OabvDspEo=
 github.com/xmidt-org/interpreter v0.0.4-0.20210609173826-707cc39a8ff4/go.mod h1:1odXM9N0kIS5EKa5Yty+6SUqJ9umWVMhOjxNn44K5b0=
+github.com/xmidt-org/interpreter v0.0.4 h1:NBCTivPMF9ldlBSn1XFtNQvMJlMkbTSFv2OQRBNyep8=
+github.com/xmidt-org/interpreter v0.0.4/go.mod h1:1odXM9N0kIS5EKa5Yty+6SUqJ9umWVMhOjxNn44K5b0=
 github.com/xmidt-org/webpa-common v1.1.0/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/webpa-common v1.3.2/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/wrp-go/v3 v3.0.2 h1:Nm+73REf62gYccYpGx0EkLP0ojgA1DG1x4eRWVfQYcQ=

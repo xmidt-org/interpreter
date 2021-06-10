@@ -8,8 +8,6 @@ require (
 	github.com/xmidt-org/arrange v0.3.0
 	github.com/xmidt-org/bascule v0.9.0 // indirect
 	github.com/xmidt-org/httpaux v0.2.1 // indirect
-	github.com/xmidt-org/interpreter v0.0.3
+	github.com/xmidt-org/interpreter v0.0.4
 	go.uber.org/fx v1.13.1
 )
-
-replace github.com/xmidt-org/interpreter v0.0.3 => github.com/xmidt-org/interpreter v0.0.4-0.20210609173826-707cc39a8ff4

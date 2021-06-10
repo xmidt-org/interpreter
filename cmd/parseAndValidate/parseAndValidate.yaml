@@ -7,7 +7,7 @@ codex:
     buffer: "5s"
   basic: "Basic YXV0aEhlYWRlcjp0ZXN0"
 filePath: "./events.json"
-useJSON: false
+useJSON: true
 metadataValidators:
   - key: "hw-mac"
   - key: "hw-manufacturer"

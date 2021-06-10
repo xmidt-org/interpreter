@@ -110,7 +110,7 @@ func createValidators() validation.Validator {
 	birthdateAlignmentValidator := validation.BirthdateAlignmentValidator(time.Hour)
 	consistentIDValidator := validation.ConsistentDeviceIDValidator()
 	bootDurationValidator := validation.BootDurationValidator(10 * time.Second)
-	eventTypeValidator := validation.EventTypeValidator()
+	eventTypeValidator := validation.EventTypeValidator([]string{"online", "offline", "reboot-pending", "fully-manageable", "operational"})
 
 	validators := validation.Validators([]validation.Validator{
 		bootTimeValidator, birthdateValidator, birthdateAlignmentValidator, consistentIDValidator, bootDurationValidator, eventTypeValidator,
