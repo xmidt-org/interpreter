@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.0.4]
 - Add validator to validate consistent device id and enhancements to boot-time validator. Introduce tags and `TaggedError` interface. [#18](https://github.com/xmidt-org/interpreter/pull/18)
 - Replace `MetricsLogError` with `TaggedError`. Add validator to futher validate birthdates and event-types. [#21](https://github.com/xmidt-org/interpreter/pull/21)
 - Add `EventsParser` that returns a subset of a list of events. [#26](https://github.com/xmidt-org/interpreter/pull/26)
@@ -22,7 +24,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [v0.0.1]
 - Initial creation
 
-[Unreleased]: https://github.com/xmidt-org/interpreter/compare/v0.0.3..HEAD
+[Unreleased]: https://github.com/xmidt-org/interpreter/compare/v0.0.4..HEAD
+[v0.0.4]: https://github.com/xmidt-org/interpreter/compare/v0.0.3...v0.0.4
 [v0.0.3]: https://github.com/xmidt-org/interpreter/compare/v0.0.2...v0.0.3
 [v0.0.2]: https://github.com/xmidt-org/interpreter/compare/v0.0.1...v0.0.2
 [v0.0.1]: https://github.com/xmidt-org/interpreter/compare/0.0.0...v0.0.1
