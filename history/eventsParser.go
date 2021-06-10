@@ -51,7 +51,8 @@ func BootCycleParser(comparator Comparator, eventValidator validation.Validator)
 				lastCycle = append(lastCycle, event)
 			}
 
-			if bootTime == latestBootTime && event.Birthdate < currentEvent.Birthdate {
+			// make sure event is not the current event
+			if bootTime == latestBootTime && event.Birthdate < currentEvent.Birthdate && event.TransactionUUID != currentEvent.TransactionUUID {
 				currentCycle = append(currentCycle, event)
 			}
 		}

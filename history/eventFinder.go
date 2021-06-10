@@ -37,9 +37,8 @@ func (f FinderFunc) Find(events []interpreter.Event, currentEvent interpreter.Ev
 }
 
 // LastSessionFinder returns a function to find an event that is deemed valid by the Validator passed in
-// with the boot-time of the previous session. If comparator returns false,
-// it will stop searching and immediately exit, returning the error and an empty event.
-func LastSessionFinder(validator validation.Validator, comparator Comparator) FinderFunc {
+// with the boot-time of the previous session.
+func LastSessionFinder(validator validation.Validator) FinderFunc {
 	return func(events []interpreter.Event, currentEvent interpreter.Event) (interpreter.Event, error) {
 		// verify that the current event has a boot-time
 		currentBootTime, err := currentEvent.BootTime()
@@ -47,12 +46,7 @@ func LastSessionFinder(validator validation.Validator, comparator Comparator) Fi
 			return interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
 		}
 
-		event, found, err := lastSessionFinder(events, currentEvent, validator, comparator)
-
-		if err != nil {
-			return interpreter.Event{}, EventFinderErr{OriginalErr: err}
-		}
-
+		event, found := lastSessionFinder(events, currentEvent, validator)
 		// final check to make sure that we actually found an event
 		if !found {
 			return interpreter.Event{}, EventFinderErr{OriginalErr: EventNotFoundErr}
@@ -61,7 +55,7 @@ func LastSessionFinder(validator validation.Validator, comparator Comparator) Fi
 	}
 }
 
-func lastSessionFinder(events []interpreter.Event, currentEvent interpreter.Event, validator validation.Validator, comparator Comparator) (interpreter.Event, bool, error) {
+func lastSessionFinder(events []interpreter.Event, currentEvent interpreter.Event, validator validation.Validator) (interpreter.Event, bool) {
 	currentBootTime, _ := currentEvent.BootTime()
 
 	var latestEvent interpreter.Event
@@ -73,13 +67,6 @@ func lastSessionFinder(events []interpreter.Event, currentEvent interpreter.Even
 		// if transaction UUIDs are the same, continue onto next event
 		if event.TransactionUUID == currentEvent.TransactionUUID {
 			continue
-		}
-
-		// If comparator returns true, it means we should stop looking for an event
-		// because there is something wrong with currentEvent, and we should not
-		// perform calculations using it.
-		if match, err := comparator.Compare(event, currentEvent); match {
-			return event, false, err
 		}
 
 		// figure out the latest previous boot-time
@@ -95,13 +82,12 @@ func lastSessionFinder(events []interpreter.Event, currentEvent interpreter.Even
 		}
 	}
 
-	return latestEvent, found, nil
+	return latestEvent, found
 }
 
 // CurrentSessionFinder returns a function to find an event that is deemed valid by the Validator passed in
-// with the boot-time of the current event. If comparator returns false,
-// it will stop searching and immediately exit, returning the error and an empty event.
-func CurrentSessionFinder(validator validation.Validator, comparator Comparator) FinderFunc {
+// with the boot-time of the current event.
+func CurrentSessionFinder(validator validation.Validator) FinderFunc {
 	return func(events []interpreter.Event, currentEvent interpreter.Event) (interpreter.Event, error) {
 		// verify that the current event has a boot-time
 		currentBootTime, err := currentEvent.BootTime()
@@ -109,11 +95,7 @@ func CurrentSessionFinder(validator validation.Validator, comparator Comparator)
 			return interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
 		}
 
-		event, found, err := currentSessionFinder(events, currentEvent, validator, comparator)
-		if err != nil {
-			return interpreter.Event{}, EventFinderErr{OriginalErr: err}
-		}
-
+		event, found := currentSessionFinder(events, currentEvent, validator)
 		// final check to make sure that we actually found an event
 		if !found {
 			return interpreter.Event{}, EventFinderErr{OriginalErr: EventNotFoundErr}
@@ -122,7 +104,7 @@ func CurrentSessionFinder(validator validation.Validator, comparator Comparator)
 	}
 }
 
-func currentSessionFinder(events []interpreter.Event, currentEvent interpreter.Event, validator validation.Validator, comparator Comparator) (interpreter.Event, bool, error) {
+func currentSessionFinder(events []interpreter.Event, currentEvent interpreter.Event, validator validation.Validator) (interpreter.Event, bool) {
 	currentBootTime, _ := currentEvent.BootTime()
 
 	var latestEvent interpreter.Event
@@ -131,13 +113,6 @@ func currentSessionFinder(events []interpreter.Event, currentEvent interpreter.E
 		// if transaction UUIDs are the same, continue onto next event
 		if event.TransactionUUID == currentEvent.TransactionUUID {
 			continue
-		}
-
-		// If comparator returns true, it means we should stop looking for an event
-		// because there is something wrong with currentEvent, and we should not
-		// perform calculations using it.
-		if match, err := comparator.Compare(event, currentEvent); match {
-			return event, false, err
 		}
 
 		// Get the bootTime from the event we are checking. If boot-time
@@ -154,36 +129,7 @@ func currentSessionFinder(events []interpreter.Event, currentEvent interpreter.E
 		}
 	}
 
-	return latestEvent, found, nil
-}
-
-// EventHistoryIterator returns a function that goes through a list of events and compares the currentEvent
-// to these events to make sure that currentEvent is valid. If comparator returns false,
-// it will stop iterating and immediately exit, returning the error and an empty event.
-// If comparator passes, the currentEvent is returned along with nil error.
-func EventHistoryIterator(comparator Comparator) FinderFunc {
-	return func(events []interpreter.Event, currentEvent interpreter.Event) (interpreter.Event, error) {
-		// verify that the current event has a boot-time
-		currentBootTime, err := currentEvent.BootTime()
-		if currentBootTime <= 0 {
-			return interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
-		}
-
-		for _, event := range events {
-			// if transaction UUIDs are the same, continue onto next event
-			if event.TransactionUUID == currentEvent.TransactionUUID {
-				continue
-			}
-			// If comparator returns true, it means we should stop looking for an event
-			// because there is something wrong with currentEvent, and we should not
-			// perform calculations using it.
-			if match, err := comparator.Compare(event, currentEvent); match {
-				return interpreter.Event{}, EventFinderErr{OriginalErr: err}
-			}
-		}
-
-		return currentEvent, nil
-	}
+	return latestEvent, found
 }
 
 // See if event has a boot-time that has greater than the one we are currently tracking but less than
