@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Replace `MetricsLogError` with `TaggedError`. Add validator to futher validate birthdates and event-types. [#21](https://github.com/xmidt-org/interpreter/pull/21)
 - Add `EventsParser` that returns a subset of a list of events. [#26](https://github.com/xmidt-org/interpreter/pull/26)
 - Add `CycleValidator` to validate a list of events. [#29](https://github.com/xmidt-org/interpreter/pull/29)
+- Remove Comparator from `EventFinder`. [#31](https://github.com/xmidt-org/interpreter/pull/31)
 
 ## [v0.0.3]
 - Add labels for errors for prometheus error metrics logging. [#15](https://github.com/xmidt-org/interpreter/pull/15)

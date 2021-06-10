@@ -6,336 +6,56 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/xmidt-org/interpreter"
 	"github.com/xmidt-org/interpreter/validation"
 )
 
 type testEvent struct {
 	event interpreter.Event
-	match bool
 	valid bool
 	err   error
 }
 
 func TestLastSessionFinder(t *testing.T) {
-	t.Run("general errors", func(t *testing.T) { testError(t, true) })
-	t.Run("duplicate and newer boot-time", func(t *testing.T) { testDuplicateAndNewer(t, true) })
+	t.Run("invalid boot-time", func(t *testing.T) { testInvalidBootTime(t, true) })
 	t.Run("event not found", func(t *testing.T) { testNotFound(t, true) })
 	t.Run("success", func(t *testing.T) { testSuccess(t, true) })
 
 }
 
 func TestCurrentSessionFinder(t *testing.T) {
-	t.Run("general errors", func(t *testing.T) { testError(t, false) })
-	t.Run("duplicate and newer boot-time", func(t *testing.T) { testDuplicateAndNewer(t, false) })
+	t.Run("invalid boot-time", func(t *testing.T) { testInvalidBootTime(t, false) })
 	t.Run("event not found", func(t *testing.T) { testNotFound(t, false) })
 	t.Run("success", func(t *testing.T) { testSuccess(t, false) })
 }
 
-func TestEventHistoryIterator(t *testing.T) {
-	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
-	assert.Nil(t, err)
-	fatalError := errors.New("invalid event")
-	latestEvent := interpreter.Event{
-		Destination:     "event:device-status/mac:112233445566/online",
-		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
-		Birthdate:       now.UnixNano(),
-		TransactionUUID: "latest",
-	}
-
-	tests := []struct {
-		description   string
-		events        []testEvent
-		expectedEvent interpreter.Event
-		latestEvent   interpreter.Event
-		expectedErr   error
-	}{
-		{
-			description: "valid",
-			events: []testEvent{
-				testEvent{
-					event: latestEvent,
-					match: false,
-				},
-				testEvent{
-					event: interpreter.Event{
-						Destination: "event:device-status/mac:112233445566/online",
-						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
-						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-					},
-					match: false,
-				},
-			},
-			latestEvent:   latestEvent,
-			expectedEvent: latestEvent,
-		},
-		{
-			description:   "no events",
-			events:        []testEvent{},
-			latestEvent:   latestEvent,
-			expectedEvent: latestEvent,
-		},
-		{
-			description: "same event",
-			events: []testEvent{
-				testEvent{
-					event: latestEvent,
-					match: false,
-				},
-			},
-			latestEvent:   latestEvent,
-			expectedEvent: latestEvent,
-		},
-		{
-			description: "missing boot-time",
-			events: []testEvent{
-				testEvent{
-					event: interpreter.Event{
-						Destination: "event:device-status/mac:112233445566/online",
-						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
-						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-					},
-					match: false,
-				},
-			},
-			latestEvent: interpreter.Event{
-				Destination: "event:device-status/mac:112233445566/online",
-				Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-			},
-			expectedEvent: interpreter.Event{},
-			expectedErr:   validation.InvalidBootTimeErr{},
-		},
-		{
-			description: "invalid boot-time",
-			events: []testEvent{
-				testEvent{
-					event: interpreter.Event{
-						Destination: "event:device-status/mac:112233445566/online",
-						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
-						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-					},
-					match: false,
-				},
-			},
-			latestEvent: interpreter.Event{
-				Destination: "event:device-status/mac:112233445566/online",
-				Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-				Metadata:    map[string]string{interpreter.BootTimeKey: "-1"},
-			},
-			expectedEvent: interpreter.Event{},
-			expectedErr:   validation.InvalidBootTimeErr{},
-		},
-		{
-			description: "invalid event",
-			events: []testEvent{
-				testEvent{
-					event: interpreter.Event{
-						Destination: "event:device-status/mac:112233445566/online",
-						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
-						Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-					},
-					match: false,
-				},
-				testEvent{
-					event: interpreter.Event{
-						Destination: "event:device-status/mac:112233445566/online",
-						Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-3 * time.Minute).Unix())},
-						Birthdate:   now.Add(-3 * time.Minute).UnixNano(),
-					},
-					match: true,
-					err:   fatalError,
-				},
-			},
-			latestEvent:   latestEvent,
-			expectedEvent: interpreter.Event{},
-			expectedErr:   fatalError,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.description, func(t *testing.T) {
-			assert := assert.New(t)
-			comparator := new(mockComparator)
-			events := make([]interpreter.Event, 0, len(tc.events))
-			for _, te := range tc.events {
-				comparator.On("Compare", te.event, tc.latestEvent).Return(te.match, te.err)
-				events = append(events, te.event)
-			}
-
-			finder := EventHistoryIterator(comparator)
-			event, err := finder.Find(events, tc.latestEvent)
-			assert.Equal(tc.expectedEvent, event)
-			if tc.expectedErr == nil || err == nil {
-				assert.Equal(tc.expectedErr, err)
-			} else {
-				assert.Contains(err.Error(), tc.expectedErr.Error())
-			}
-		})
-	}
-}
-
-func testError(t *testing.T, past bool) {
-	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
-	assert.Nil(t, err)
-
-	comparator := new(mockComparator)
-	fatalError := errors.New("invalid event")
-	comparator.On("Compare", mock.Anything, mock.Anything).Return(true, fatalError)
-	var finder FinderFunc
-	if past {
-		finder = LastSessionFinder(new(mockValidator), comparator)
-	} else {
-		finder = CurrentSessionFinder(new(mockValidator), comparator)
-	}
-
-	tests := []struct {
-		description   string
-		events        []interpreter.Event
-		expectedEvent interpreter.Event
-		latestEvent   interpreter.Event
-		expectedErr   error
-	}{
-		{
-			description: "Non-existent boot-time",
-			events: []interpreter.Event{
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/online",
-					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
-					Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-				},
-			},
-			latestEvent: interpreter.Event{
-				Destination:     "event:device-status/mac:112233445566/online",
-				Birthdate:       now.UnixNano(),
-				TransactionUUID: "latest",
-			},
-			expectedEvent: interpreter.Event{},
-			expectedErr:   validation.InvalidBootTimeErr{},
-		},
-		{
-			description: "Invalid boot-time",
-			events: []interpreter.Event{
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/online",
-					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
-					Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-				},
-			},
-			latestEvent: interpreter.Event{
-				Destination:     "event:device-status/mac:112233445566/online",
-				Metadata:        map[string]string{interpreter.BootTimeKey: "-1"},
-				Birthdate:       now.UnixNano(),
-				TransactionUUID: "latest",
-			},
-			expectedEvent: interpreter.Event{},
-			expectedErr:   validation.InvalidBootTimeErr{},
-		},
-		{
-			description: "Fatal error",
-			events: []interpreter.Event{
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/online",
-					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(1 * time.Hour).Unix())},
-					Birthdate:   now.Add(1 * time.Hour).UnixNano(),
-				},
-			},
-			latestEvent: interpreter.Event{
-				Destination:     "event:device-status/mac:112233445566/online",
-				Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
-				Birthdate:       now.UnixNano(),
-				TransactionUUID: "latest",
-			},
-			expectedEvent: interpreter.Event{},
-			expectedErr:   fatalError,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.description, func(t *testing.T) {
-			assert := assert.New(t)
-			event, err := finder.Find(tc.events, tc.latestEvent)
-			assert.Equal(tc.expectedEvent, event)
-			assert.NotNil(err)
-			assert.Contains(err.Error(), tc.expectedErr.Error())
-		})
-	}
-}
-
-func testDuplicateAndNewer(t *testing.T, past bool) {
+func testInvalidBootTime(t *testing.T, past bool) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	latestEvent := interpreter.Event{
 		Destination:     "event:device-status/mac:112233445566/online",
-		Metadata:        map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
+		Metadata:        map[string]string{},
 		Birthdate:       now.UnixNano(),
 		TransactionUUID: "latest",
 	}
 
-	comparator := Comparators([]Comparator{OlderBootTimeComparator(), DuplicateEventComparator()})
+	assert := assert.New(t)
+	mockVal := new(mockValidator)
+	mockVal.On("Valid", mock.Anything).Return(true, nil)
 	var finder FinderFunc
 	if past {
-		finder = LastSessionFinder(new(mockValidator), comparator)
+		finder = LastSessionFinder(mockVal)
 	} else {
-		finder = CurrentSessionFinder(new(mockValidator), comparator)
+		finder = CurrentSessionFinder(mockVal)
 	}
+	event, err := finder([]interpreter.Event{}, latestEvent)
+	assert.Empty(event)
+	var invalidBootTimeErr validation.InvalidBootTimeErr
+	assert.True(errors.As(err, &invalidBootTimeErr))
 
-	tests := []struct {
-		description   string
-		events        []interpreter.Event
-		expectedEvent interpreter.Event
-		latestEvent   interpreter.Event
-		expectedErr   error
-	}{
-		{
-			description: "Newer boot-time found",
-			events: []interpreter.Event{
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/online",
-					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(1 * time.Hour).Unix())},
-					Birthdate:   now.Add(-1 * time.Hour).UnixNano(),
-				},
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/online",
-					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
-					Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-				},
-			},
-			latestEvent:   latestEvent,
-			expectedEvent: interpreter.Event{},
-			expectedErr:   errNewerBootTime,
-		},
-		{
-			description: "Duplicate event found",
-			events: []interpreter.Event{
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/online",
-					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Unix())},
-					Birthdate:   now.UnixNano(),
-				},
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/online",
-					Metadata:    map[string]string{interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Hour).Unix())},
-					Birthdate:   now.Add(-30 * time.Minute).UnixNano(),
-				},
-			},
-			latestEvent:   latestEvent,
-			expectedEvent: interpreter.Event{},
-			expectedErr:   errDuplicateEvent,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.description, func(t *testing.T) {
-			assert := assert.New(t)
-			tc.events = append(tc.events, tc.latestEvent)
-			event, err := finder.Find(tc.events, tc.latestEvent)
-			assert.Equal(tc.expectedEvent, event)
-			assert.NotNil(err)
-			assert.Contains(err.Error(), tc.expectedErr.Error())
-		})
-	}
 }
 
 func testNotFound(t *testing.T, past bool) {
@@ -347,8 +67,6 @@ func testNotFound(t *testing.T, past bool) {
 		Birthdate:       now.UnixNano(),
 		TransactionUUID: "latest",
 	}
-	comparator := new(mockComparator)
-	comparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
 	tests := []struct {
 		description   string
@@ -435,9 +153,9 @@ func testNotFound(t *testing.T, past bool) {
 			}
 			var finder FinderFunc
 			if past {
-				finder = LastSessionFinder(mockVal, comparator)
+				finder = LastSessionFinder(mockVal)
 			} else {
-				finder = CurrentSessionFinder(mockVal, comparator)
+				finder = CurrentSessionFinder(mockVal)
 			}
 			event, err := finder(testEvents, latestEvent)
 			assert.Equal(tc.expectedEvent, event)
@@ -454,8 +172,6 @@ func testSuccess(t *testing.T, past bool) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	mockVal := new(mockValidator)
-	comparator := new(mockComparator)
-	comparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
 	latestEvent := interpreter.Event{
 		Destination:     "event:device-status/mac:112233445566/online",
@@ -542,9 +258,9 @@ func testSuccess(t *testing.T, past bool) {
 	assert := assert.New(t)
 	var finder FinderFunc
 	if past {
-		finder = LastSessionFinder(mockVal, comparator)
+		finder = LastSessionFinder(mockVal)
 	} else {
-		finder = CurrentSessionFinder(mockVal, comparator)
+		finder = CurrentSessionFinder(mockVal)
 	}
 	event, err := finder.Find(events, latestEvent)
 	assert.Equal(validEvent, event)

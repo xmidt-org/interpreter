@@ -558,7 +558,7 @@ func TestBirthdateAlignmentValidator(t *testing.T) {
 }
 
 func TestEventTypesValidator(t *testing.T) {
-	val := EventTypeValidator()
+	val := EventTypeValidator([]string{"online", "online", "offline"})
 	tests := []struct {
 		description   string
 		event         interpreter.Event

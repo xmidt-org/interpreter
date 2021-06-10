@@ -190,7 +190,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 	tests := []struct {
 		description   string
 		events        []interpreter.Event
-		skipFunc      func(string) bool
+		skipFunc      func(events []interpreter.Event, id string) bool
 		expectedValid bool
 		expectedIDs   []string
 	}{
@@ -201,7 +201,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 		},
 		{
 			description: "all valid, no skip",
-			skipFunc:    func(id string) bool { return false },
+			skipFunc:    func(events []interpreter.Event, id string) bool { return false },
 			events: []interpreter.Event{
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
@@ -232,7 +232,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 		},
 		{
 			description: "all valid, skip",
-			skipFunc: func(id string) bool {
+			skipFunc: func(events []interpreter.Event, id string) bool {
 				return id == "3"
 			},
 			events: []interpreter.Event{
@@ -261,7 +261,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 		},
 		{
 			description: "invalid-no skip",
-			skipFunc: func(id string) bool {
+			skipFunc: func(events []interpreter.Event, id string) bool {
 				return false
 			},
 			events: []interpreter.Event{
@@ -295,7 +295,7 @@ func TestSessionOnlineValidator(t *testing.T) {
 		},
 		{
 			description: "invalid-skip",
-			skipFunc: func(id string) bool {
+			skipFunc: func(events []interpreter.Event, id string) bool {
 				return id == "4"
 			},
 			events: []interpreter.Event{
@@ -351,7 +351,7 @@ func TestSessionOfflineValidator(t *testing.T) {
 	tests := []struct {
 		description   string
 		events        []interpreter.Event
-		skipFunc      func(string) bool
+		skipFunc      func(events []interpreter.Event, id string) bool
 		expectedValid bool
 		expectedIDs   []string
 	}{
@@ -362,7 +362,7 @@ func TestSessionOfflineValidator(t *testing.T) {
 		},
 		{
 			description: "invalid with skip",
-			skipFunc: func(id string) bool {
+			skipFunc: func(events []interpreter.Event, id string) bool {
 				return id == "5"
 			},
 			events: []interpreter.Event{
@@ -403,7 +403,7 @@ func TestSessionOfflineValidator(t *testing.T) {
 		},
 		{
 			description: "invalid without skip",
-			skipFunc: func(id string) bool {
+			skipFunc: func(events []interpreter.Event, id string) bool {
 				return false
 			},
 			events: []interpreter.Event{
@@ -444,7 +444,7 @@ func TestSessionOfflineValidator(t *testing.T) {
 		},
 		{
 			description: "valid with skip",
-			skipFunc: func(id string) bool {
+			skipFunc: func(events []interpreter.Event, id string) bool {
 				return id == "5"
 			},
 			events: []interpreter.Event{
@@ -678,7 +678,7 @@ func TestFindSessionsWithoutEvent(t *testing.T) {
 	tests := []struct {
 		description           string
 		events                map[string]bool
-		skipFunc              func(string) bool
+		skipFunc              func(events []interpreter.Event, id string) bool
 		expectedInvalidFields []string
 	}{
 		{
@@ -688,7 +688,7 @@ func TestFindSessionsWithoutEvent(t *testing.T) {
 		{
 			description: "valid with skip",
 			events:      map[string]bool{"2": true, "3": true, "1": false},
-			skipFunc: func(id string) bool {
+			skipFunc: func(events []interpreter.Event, id string) bool {
 				return id == "1"
 			},
 		},
@@ -700,7 +700,7 @@ func TestFindSessionsWithoutEvent(t *testing.T) {
 		{
 			description: "invalid with skip",
 			events:      map[string]bool{"1": false, "2": true, "3": false, "4": false},
-			skipFunc: func(id string) bool {
+			skipFunc: func(events []interpreter.Event, id string) bool {
 				return id == "1"
 			},
 			expectedInvalidFields: []string{"3", "4"},
@@ -710,7 +710,7 @@ func TestFindSessionsWithoutEvent(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			invalidFields := findSessionsWithoutEvent(tc.events, tc.skipFunc)
+			invalidFields := findSessionsWithoutEvent(tc.events, []interpreter.Event{}, tc.skipFunc)
 			assert.Equal(len(tc.expectedInvalidFields), len(invalidFields))
 			assert.ElementsMatch(tc.expectedInvalidFields, invalidFields)
 		})
