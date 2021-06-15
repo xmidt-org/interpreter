@@ -24,11 +24,6 @@ func (p EventsParserFunc) Parse(events []interpreter.Event, currentEvent interpr
 func RebootParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
 	comparator, eventValidator = setComparatorValidator(comparator, eventValidator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
-		latestBootTime, err := currentEvent.BootTime()
-		if err != nil || latestBootTime <= 0 {
-			return []interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
-		}
-
 		lastCycle, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
 		if err != nil {
 			return []interpreter.Event{}, err
@@ -48,11 +43,6 @@ func RebootParser(comparator Comparator, eventValidator validation.Validator) Ev
 func LastCycleParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
 	comparator, eventValidator = setComparatorValidator(comparator, eventValidator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
-		latestBootTime, err := currentEvent.BootTime()
-		if err != nil || latestBootTime <= 0 {
-			return []interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
-		}
-
 		lastCycle, _, err := parserHelper(eventsHistory, currentEvent, comparator)
 		if err != nil {
 			return []interpreter.Event{}, err
@@ -72,11 +62,6 @@ func LastCycleParser(comparator Comparator, eventValidator validation.Validator)
 func LastCycleToCurrentParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
 	comparator, eventValidator = setComparatorValidator(comparator, eventValidator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
-		latestBootTime, err := currentEvent.BootTime()
-		if err != nil || latestBootTime <= 0 {
-			return []interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
-		}
-
 		lastCycle, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
 		if err != nil {
 			return []interpreter.Event{}, err
@@ -93,10 +78,14 @@ func LastCycleToCurrentParser(comparator Comparator, eventValidator validation.V
 // comparator returns true, parserHelper will stop and return two empty slices and the error returned by the comparator. The two slices are sorted
 // from oldest to newest.
 func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, comparator Comparator) ([]interpreter.Event, []interpreter.Event, error) {
+	latestBootTime, err := currentEvent.BootTime()
+	if err != nil || latestBootTime <= 0 {
+		return []interpreter.Event{}, []interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
+	}
+
 	var lastCycle []interpreter.Event
 	var currentCycle []interpreter.Event
 	var lastBoottime int64
-	latestBootTime, _ := currentEvent.BootTime()
 	for _, event := range events {
 		bootTime, err := event.BootTime()
 		if err != nil || bootTime == 0 {
