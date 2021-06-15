@@ -215,9 +215,7 @@ func (suite *CycleTestSuite) TestValidParsers() {
 	}
 
 	suite.createEvents(bootTimes...)
-	mockVal := new(mockValidator)
 	mockComparator := new(mockComparator)
-	mockVal.On("Valid", mock.Anything).Return(true, nil)
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
 	fromEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2), "event:device-status/mac:112233445566/reboot-pending")
@@ -226,14 +224,14 @@ func (suite *CycleTestSuite) TestValidParsers() {
 
 	// Test RebootParser
 	expectedEvents := suite.parseEvents(fromEvent, toEvent)
-	parser := RebootParser(mockComparator, mockVal)
+	parser := RebootParser(mockComparator)
 	results, err := parser.Parse(suite.Events, toEvent)
 	suite.Equal(expectedEvents, results)
 	suite.Nil(err)
 
 	// Test LastCycleParser
 	expectedLastCycle := suite.parseSameBootTime(fromEvent, false)
-	lastCycleParser := LastCycleParser(mockComparator, mockVal)
+	lastCycleParser := LastCycleParser(mockComparator)
 	lastCycle, err := lastCycleParser.Parse(suite.Events, toEvent)
 	suite.Equal(expectedLastCycle, lastCycle)
 	suite.Nil(err)
@@ -242,7 +240,7 @@ func (suite *CycleTestSuite) TestValidParsers() {
 	lastCycleEvents := suite.parseSameBootTime(fromEvent, false)
 	currentCycleEvents := suite.parseSameBootTime(toEvent, true)
 	allExpectedEvents := append(lastCycleEvents, currentCycleEvents...)
-	lastCycleToCurrentParser := LastCycleToCurrentParser(mockComparator, mockVal)
+	lastCycleToCurrentParser := LastCycleToCurrentParser(mockComparator)
 	cycle, err := lastCycleToCurrentParser.Parse(suite.Events, toEvent)
 	suite.Equal(allExpectedEvents, cycle)
 	suite.Nil(err)
@@ -276,15 +274,13 @@ func (suite *CycleTestSuite) TestNoRebootPendingEvent() {
 	}
 
 	suite.createEvents(bootTimes...)
-	mockVal := new(mockValidator)
 	mockComparator := new(mockComparator)
-	mockVal.On("Valid", mock.Anything).Return(true, nil)
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 	suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 1), "event:device-status/mac:112233445566/offline")
 	fromEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 3), "event:device-status/mac:112233445566/offline")
 	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
 	expectedEvents := suite.parseEvents(fromEvent, toEvent)
-	parser := RebootParser(mockComparator, mockVal)
+	parser := RebootParser(mockComparator)
 	results, err := parser.Parse(suite.Events, toEvent)
 	suite.Equal(expectedEvents, results)
 	suite.Nil(err)
@@ -318,16 +314,14 @@ func (suite *CycleTestSuite) TestInvalidComparator() {
 	}
 
 	suite.createEvents(bootTimes...)
-	mockVal := new(mockValidator)
 	mockComparator := new(mockComparator)
 	testErr := errors.New("test")
-	mockVal.On("Valid", mock.Anything).Return(true, nil)
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(true, testErr)
 	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
 	parsers := []EventsParserFunc{
-		RebootParser(mockComparator, mockVal),
-		LastCycleParser(mockComparator, mockVal),
-		LastCycleToCurrentParser(mockComparator, mockVal),
+		RebootParser(mockComparator),
+		LastCycleParser(mockComparator),
+		LastCycleToCurrentParser(mockComparator),
 	}
 
 	for _, parser := range parsers {
@@ -370,12 +364,11 @@ func (suite *CycleTestSuite) TestCurrentEventInvalidBootTime() {
 		interpreter.Event{}, interpreter.Event{Metadata: map[string]string{interpreter.BootTimeKey: "-1"}},
 	}
 
-	mockVal := new(mockValidator)
 	mockComparator := new(mockComparator)
 	parsers := []EventsParserFunc{
-		RebootParser(mockComparator, mockVal),
-		LastCycleParser(mockComparator, mockVal),
-		LastCycleToCurrentParser(mockComparator, mockVal),
+		RebootParser(mockComparator),
+		LastCycleParser(mockComparator),
+		LastCycleToCurrentParser(mockComparator),
 	}
 
 	for _, event := range tests {
@@ -478,13 +471,9 @@ func TestRebootEventsParser(t *testing.T) {
 
 func TestSetComparatorValidator(t *testing.T) {
 	assert := assert.New(t)
-	comparator, validator := setComparatorValidator(nil, nil)
+	comparator := setComparator(nil)
 	assert.NotNil(comparator)
-	assert.NotNil(validator)
 	match, err := comparator.Compare(interpreter.Event{}, interpreter.Event{})
 	assert.False(match)
-	assert.Nil(err)
-	valid, err := validator.Valid(interpreter.Event{})
-	assert.True(valid)
 	assert.Nil(err)
 }

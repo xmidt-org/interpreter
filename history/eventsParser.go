@@ -21,8 +21,8 @@ func (p EventsParserFunc) Parse(events []interpreter.Event, currentEvent interpr
 // The returned slice is sorted from oldest to newest primarily by boot-time, and then by birthdate.
 // RebootParser also runs the list of events through the eventValidator
 // and returns an error containing all of the invalid events with their corresponding errors.
-func RebootParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
-	comparator, eventValidator = setComparatorValidator(comparator, eventValidator)
+func RebootParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
 		lastCycle, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
 		if err != nil {
@@ -39,8 +39,8 @@ func RebootParser(comparator Comparator, eventValidator validation.Validator) Ev
 // all of the events with the boot-time of the previous cycle sorted from oldest to newest by birthdate.
 // LastCycleParser also runs the list of events through the eventValidator
 // and returns an error containing all of the invalid events with their corresponding errors.
-func LastCycleParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
-	comparator, eventValidator = setComparatorValidator(comparator, eventValidator)
+func LastCycleParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
 		lastCycle, _, err := parserHelper(eventsHistory, currentEvent, comparator)
 		if err != nil {
@@ -55,8 +55,8 @@ func LastCycleParser(comparator Comparator, eventValidator validation.Validator)
 // The slice includes all of the events with the boot-time of the previous cycle as well as all events with the latest boot-time
 // that have a birthdate less than or equal to the current event.
 // The returned slice is sorted from oldest to newest primarily by boot-time, and then by birthdate.
-func LastCycleToCurrentParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
-	comparator, eventValidator = setComparatorValidator(comparator, eventValidator)
+func LastCycleToCurrentParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
 		lastCycle, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
 		if err != nil {
@@ -121,20 +121,14 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 }
 
 // returns default comparator and validator
-func setComparatorValidator(comparator Comparator, eventValidator validation.Validator) (Comparator, validation.Validator) {
+func setComparator(comparator Comparator) Comparator {
 	if comparator == nil {
 		comparator = ComparatorFunc(func(interpreter.Event, interpreter.Event) (bool, error) {
 			return false, nil
 		})
 	}
 
-	if eventValidator == nil {
-		eventValidator = validation.ValidatorFunc(func(interpreter.Event) (bool, error) {
-			return true, nil
-		})
-	}
-
-	return comparator, eventValidator
+	return comparator
 }
 
 // rebootEventsParser is a helper function that takes in a list of events
