@@ -436,13 +436,20 @@ func (suite *CycleTestSuite) TestCurrentEventInvalidBootTime() {
 
 	mockVal := new(mockValidator)
 	mockComparator := new(mockComparator)
+	parsers := []EventsParserFunc{
+		RebootParser(mockComparator, mockVal),
+		LastCycleParser(mockComparator, mockVal),
+		LastCycleToCurrentParser(mockComparator, mockVal),
+	}
 
 	for _, event := range tests {
-		parser := RebootParser(mockComparator, mockVal)
-		results, err := parser.Parse(suite.Events, event)
-		suite.Empty(results)
-		var invalidBootTimeErr validation.InvalidBootTimeErr
-		suite.True(errors.As(err, &invalidBootTimeErr))
+		for _, parser := range parsers {
+			results, err := parser.Parse(suite.Events, event)
+			suite.Empty(results)
+			var invalidBootTimeErr validation.InvalidBootTimeErr
+			suite.True(errors.As(err, &invalidBootTimeErr))
+		}
+
 	}
 
 }
@@ -534,9 +541,16 @@ func TestRebootEventsParser(t *testing.T) {
 }
 
 func TestSetComparatorValidator(t *testing.T) {
+	assert := assert.New(t)
 	comparator, validator := setComparatorValidator(nil, nil)
-	assert.NotNil(t, comparator)
-	assert.NotNil(t, validator)
+	assert.NotNil(comparator)
+	assert.NotNil(validator)
+	match, err := comparator.Compare(interpreter.Event{}, interpreter.Event{})
+	assert.False(match)
+	assert.Nil(err)
+	valid, err := validator.Valid(interpreter.Event{})
+	assert.True(valid)
+	assert.Nil(err)
 }
 
 type testEventValidation struct {
