@@ -31,8 +31,7 @@ func RebootParser(comparator Comparator, eventValidator validation.Validator) Ev
 
 		lastCycle = rebootEventsParser(lastCycle)
 		cycle := append(lastCycle, currentCycle...)
-		errs := validateEvents(cycle, eventValidator)
-		return cycle, errs
+		return cycle, nil
 	}
 }
 
@@ -48,8 +47,7 @@ func LastCycleParser(comparator Comparator, eventValidator validation.Validator)
 			return []interpreter.Event{}, err
 		}
 
-		errs := validateEvents(lastCycle, eventValidator)
-		return lastCycle, errs
+		return lastCycle, nil
 	}
 }
 
@@ -57,8 +55,6 @@ func LastCycleParser(comparator Comparator, eventValidator validation.Validator)
 // The slice includes all of the events with the boot-time of the previous cycle as well as all events with the latest boot-time
 // that have a birthdate less than or equal to the current event.
 // The returned slice is sorted from oldest to newest primarily by boot-time, and then by birthdate.
-// LastCycleToCurrentParser also runs the list of events through the eventValidator
-// and returns an error containing all of the invalid events with their corresponding errors.
 func LastCycleToCurrentParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
 	comparator, eventValidator = setComparatorValidator(comparator, eventValidator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
@@ -68,8 +64,7 @@ func LastCycleToCurrentParser(comparator Comparator, eventValidator validation.V
 		}
 
 		cycle := append(lastCycle, currentCycle...)
-		errs := validateEvents(cycle, eventValidator)
-		return cycle, errs
+		return cycle, nil
 	}
 }
 
@@ -87,8 +82,8 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 	var currentCycle []interpreter.Event
 	var lastBoottime int64
 	for _, event := range events {
-		bootTime, err := event.BootTime()
-		if err != nil || bootTime == 0 {
+		bootTime, _ := event.BootTime()
+		if bootTime <= 0 {
 			continue
 		}
 
@@ -140,24 +135,6 @@ func setComparatorValidator(comparator Comparator, eventValidator validation.Val
 	}
 
 	return comparator, eventValidator
-}
-
-func validateEvents(events []interpreter.Event, eventValidator validation.Validator) error {
-	var allErrors validation.Errors
-	for _, event := range events {
-		if valid, err := eventValidator.Valid(event); !valid {
-			allErrors = append(allErrors, validation.EventWithError{
-				Event:       event,
-				OriginalErr: err,
-			})
-		}
-	}
-
-	if len(allErrors) == 0 {
-		return nil
-	}
-
-	return allErrors
 }
 
 // rebootEventsParser is a helper function that takes in a list of events
