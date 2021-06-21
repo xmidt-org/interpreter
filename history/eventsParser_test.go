@@ -46,7 +46,8 @@ func (suite *CycleTestSuite) createEvents(eventSetups ...testEventSetup) {
 }
 
 func (suite *CycleTestSuite) parseEvents(from interpreter.Event, to interpreter.Event) []interpreter.Event {
-	eventsCopy := suite.Events
+	eventsCopy := make([]interpreter.Event, len(suite.Events))
+	copy(eventsCopy, suite.Events)
 	sort.Slice(eventsCopy, func(a, b int) bool {
 		boottimeA, _ := eventsCopy[a].BootTime()
 		boottimeB, _ := eventsCopy[b].BootTime()
