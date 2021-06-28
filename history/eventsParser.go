@@ -15,8 +15,8 @@ func (p EventsParserFunc) Parse(events []interpreter.Event, currentEvent interpr
 	return p(events, currentEvent)
 }
 
-// RebootParser returns an EventsParser that takes in a list of events and returns a slice of events that are
-// relevant to the latest reboot. The slice starts with the last reboot-pending (if available) or last offline event
+// RebootParser returns an EventsParser that takes in a list of events and returns a sorted subset of that list
+// containing events that are relevant to the latest reboot. The slice starts with the last reboot-pending (if available) or last offline event
 // and includes all events afterwards that have a birthdate less than or equal to the current event.
 // The returned slice is sorted from oldest to newest primarily by boot-time, and then by birthdate.
 // RebootParser also runs the list of events through the eventValidator
@@ -35,9 +35,9 @@ func RebootParser(comparator Comparator) EventsParserFunc {
 	}
 }
 
-// LastCycleParser returns an EventsParser that takes in a list of events and returns a slice of events that includes
-// all of the events with the boot-time of the previous cycle sorted from oldest to newest by birthdate.
-// LastCycleParser also runs the list of events through the eventValidator
+// LastCycleParser returns an EventsParser that takes in a list of events and returns a sorted subset
+// of that list which includes all of the events with the boot-time of the previous cycle sorted from oldest to newest
+// by birthdate. LastCycleParser also runs the list of events through the eventValidator
 // and returns an error containing all of the invalid events with their corresponding errors.
 func LastCycleParser(comparator Comparator) EventsParserFunc {
 	comparator = setComparator(comparator)
@@ -51,9 +51,9 @@ func LastCycleParser(comparator Comparator) EventsParserFunc {
 	}
 }
 
-// LastCycleToCurrentParser returns an EventsParser that takes in a list of events and returns a slice of events.
-// The slice includes all of the events with the boot-time of the previous cycle as well as all events with the latest boot-time
-// that have a birthdate less than or equal to the current event.
+// LastCycleToCurrentParser returns an EventsParser that takes in a list of events and returns a sorted subset
+// of that list. The slice includes all of the events with the boot-time of the previous cycle
+// as well as all events with the latest boot-time that have a birthdate less than or equal to the current event.
 // The returned slice is sorted from oldest to newest primarily by boot-time, and then by birthdate.
 func LastCycleToCurrentParser(comparator Comparator) EventsParserFunc {
 	comparator = setComparator(comparator)
@@ -89,7 +89,7 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 
 		// If comparator returns true, it means we should stop parsing
 		// because there is something wrong with currentEvent
-		if match, err := comparator.Compare(event, currentEvent); match {
+		if bad, err := comparator.Compare(event, currentEvent); bad {
 			return []interpreter.Event{}, []interpreter.Event{}, err
 		}
 
