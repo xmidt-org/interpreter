@@ -148,7 +148,6 @@ func EventOrderValidator(order []string) CycleValidatorFunc {
 			return true, nil
 		}
 
-		started := false
 		currentIndex := 0
 		validOrder := true
 		var actualOrder []string
@@ -158,16 +157,15 @@ func EventOrderValidator(order []string) CycleValidatorFunc {
 			}
 
 			eventType, _ := event.EventType()
-			if started {
+			if currentIndex > 0 {
 				actualOrder = append(actualOrder, eventType)
 				if eventType != order[currentIndex] {
 					validOrder = false
 				} else {
 					currentIndex++
 				}
-			} else if !started && currentIndex == 0 {
+			} else if currentIndex == 0 {
 				if eventType == order[currentIndex] {
-					started = true
 					actualOrder = append(actualOrder, eventType)
 					currentIndex++
 				}
@@ -187,47 +185,46 @@ func EventOrderValidator(order []string) CycleValidatorFunc {
 	}
 }
 
-// TrueRebootValidator returns a CycleValidatorFunc that validates that the latest online/offline set of events is the cause of
-// a true reboot, meaning that the latest online event has a boot-time that is different from the offline event that precedes it.
-// If an online/offline set of events is not found, false and an error is returned.
+// TrueRebootValidator returns a CycleValidatorFunc that validates that the latest online event is the result of a
+// true reboot, meaning that it has a boot-time that is different from the event that precedes it.
+// If an online event is not found, false and an error is returned.
 func TrueRebootValidator() CycleValidatorFunc {
 	return func(events []interpreter.Event) (bool, error) {
 		eventsCopy := make([]interpreter.Event, len(events))
 		copy(eventsCopy, events)
 		sort.Slice(eventsCopy, func(a, b int) bool {
+			boottimeA, _ := eventsCopy[a].BootTime()
+			boottimeB, _ := eventsCopy[b].BootTime()
+			if boottimeA != boottimeB {
+				return boottimeA > boottimeB
+			}
+
 			return eventsCopy[a].Birthdate > eventsCopy[b].Birthdate
 		})
 
-		var lastOnlineEvent interpreter.Event
-		onlineEventFound := false
-		offlineEventFound := false
-		for _, event := range eventsCopy {
+		for i, event := range eventsCopy {
 			eventType, _ := event.EventType()
-			if eventType == "online" && !onlineEventFound {
-				lastOnlineEvent = event
-				onlineEventFound = true
-			} else if eventType == "offline" && onlineEventFound {
-				offlineEventFound = true
-				offlineBootTime, err := event.BootTime()
-				onlineBootTime, e := lastOnlineEvent.BootTime()
-				if err != nil || e != nil || onlineBootTime == offlineBootTime {
-					return false, CycleValidationErr{
-						OriginalErr: ErrFalseReboot,
-						ErrorTag:    validation.FalseReboot,
+			if eventType == interpreter.OnlineEventType {
+				if i < len(eventsCopy)-1 {
+					nextEvent := eventsCopy[i+1]
+					currentBootTime, err := event.BootTime()
+					nextEventBootTime, e := nextEvent.BootTime()
+					if err != nil || e != nil || currentBootTime == nextEventBootTime {
+						return false, CycleValidationErr{
+							OriginalErr: ErrFalseReboot,
+							ErrorTag:    validation.FalseReboot,
+						}
 					}
 				}
-				break
+
+				return true, nil
 			}
 		}
 
-		if !onlineEventFound || !offlineEventFound {
-			return false, CycleValidationErr{
-				OriginalErr: ErrNoReboot,
-				ErrorTag:    validation.NoReboot,
-			}
+		return false, CycleValidationErr{
+			OriginalErr: ErrNoReboot,
+			ErrorTag:    validation.NoReboot,
 		}
-
-		return true, nil
 	}
 }
 

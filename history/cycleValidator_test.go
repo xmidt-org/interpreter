@@ -752,7 +752,7 @@ func TestTrueRebootValidator(t *testing.T) {
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/online",
 					Metadata: map[string]string{
-						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
 					},
 					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
 				},
@@ -781,6 +781,26 @@ func TestTrueRebootValidator(t *testing.T) {
 			expectedValid: true,
 		},
 		{
+			description: "no events before",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/fully-manageable",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: true,
+		},
+		{
 			description: "invalid",
 			events: []interpreter.Event{
 				interpreter.Event{
@@ -798,18 +818,53 @@ func TestTrueRebootValidator(t *testing.T) {
 					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
 				},
 				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/operational",
+					Destination: "event:device-status/mac:112233445566/offline",
 					Metadata: map[string]string{
 						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-5 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: false,
+			expectedErr:   ErrFalseReboot,
+		},
+		{
+			description: "multiple consecutive online events",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/fully-manageable",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
 					},
 					Birthdate: now.Add(-3 * time.Minute).UnixNano(),
 				},
 				interpreter.Event{
 					Destination: "event:device-status/mac:112233445566/offline",
 					Metadata: map[string]string{
-						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-10 * time.Minute).Unix()),
 					},
 					Birthdate: now.Add(-5 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-10 * time.Minute).UnixNano(),
 				},
 			},
 			expectedValid: false,
@@ -843,34 +898,6 @@ func TestTrueRebootValidator(t *testing.T) {
 			expectedValid: false,
 			expectedErr:   ErrNoReboot,
 		},
-		{
-			description: "no offline event",
-			events: []interpreter.Event{
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/fully-manageable",
-					Metadata: map[string]string{
-						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
-					},
-					Birthdate: now.UnixNano(),
-				},
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/online",
-					Metadata: map[string]string{
-						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
-					},
-					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
-				},
-				interpreter.Event{
-					Destination: "event:device-status/mac:112233445566/operational",
-					Metadata: map[string]string{
-						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
-					},
-					Birthdate: now.Add(-3 * time.Minute).UnixNano(),
-				},
-			},
-			expectedValid: false,
-			expectedErr:   ErrNoReboot,
-		},
 	}
 
 	validator := TrueRebootValidator()
@@ -879,7 +906,6 @@ func TestTrueRebootValidator(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
 			valid, err := validator.Valid(tc.events)
-			fmt.Println(err)
 			assert.Equal(tc.expectedValid, valid)
 			if !tc.expectedValid {
 				assert.True(errors.Is(err, tc.expectedErr))

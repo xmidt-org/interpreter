@@ -90,10 +90,7 @@ func (suite *CycleTestSuite) parseSameBootTime(currentEvent interpreter.Event, u
 		}
 	}
 
-	sort.Slice(eventsCopy, func(a, b int) bool {
-		return eventsCopy[a].Birthdate < eventsCopy[b].Birthdate
-	})
-
+	sort.Slice(eventsCopy, birthdateAscendingSortFunc(eventsCopy))
 	return eventsCopy
 }
 
