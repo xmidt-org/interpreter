@@ -15,76 +15,120 @@ func (p EventsParserFunc) Parse(events []interpreter.Event, currentEvent interpr
 	return p(events, currentEvent)
 }
 
-// BootCycleParser returns an EventsParser that takes in a list of events and returns a slice of events
-// starting with the last reboot-pending (if available) or last offline event up to events from the current
-// cycle that have a birthdate before the current event. The returned slice is sorted from oldest to newest
-// primarily by boot-time, and then by birthdate. BootCycleParser also runs the list of events through the eventValidator
+// RebootParser returns an EventsParser that takes in a list of events and returns a sorted subset of that list
+// containing events that are relevant to the latest reboot. The slice starts with the last reboot-pending (if available) or last offline event
+// and includes all events afterwards that have a birthdate less than or equal to the current event.
+// The returned slice is sorted from oldest to newest primarily by boot-time, and then by birthdate.
+// RebootParser also runs the list of events through the eventValidator
 // and returns an error containing all of the invalid events with their corresponding errors.
-func BootCycleParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
+func RebootParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
-		latestBootTime, err := currentEvent.BootTime()
-		if err != nil || latestBootTime <= 0 {
-			return []interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
-		}
-
-		var lastCycle []interpreter.Event
-		var currentCycle []interpreter.Event
-		var lastBoottime int64
-		for _, event := range eventsHistory {
-			bootTime, err := event.BootTime()
-			if err != nil || bootTime == 0 {
-				continue
-			}
-
-			// If comparator returns true, it means we should stop parsing
-			// because there is something wrong with currentEvent
-			if match, err := comparator.Compare(event, currentEvent); match {
-				return []interpreter.Event{}, err
-			}
-
-			if bootTime > lastBoottime && bootTime < latestBootTime {
-				lastBoottime = bootTime
-				lastCycle = nil
-			}
-
-			if bootTime == lastBoottime {
-				lastCycle = append(lastCycle, event)
-			}
-
-			// make sure event is not the current event
-			if bootTime == latestBootTime && event.Birthdate < currentEvent.Birthdate && event.TransactionUUID != currentEvent.TransactionUUID {
-				currentCycle = append(currentCycle, event)
-			}
+		lastCycle, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
+		if err != nil {
+			return []interpreter.Event{}, err
 		}
 
 		lastCycle = rebootEventsParser(lastCycle)
-		currentCycle = append(currentCycle, currentEvent)
-		sort.Slice(currentCycle, func(a, b int) bool {
-			return currentCycle[a].Birthdate < currentCycle[b].Birthdate
-		})
-
 		cycle := append(lastCycle, currentCycle...)
-		errs := validateEvents(cycle, eventValidator)
-		return cycle, errs
+		return cycle, nil
 	}
 }
 
-func validateEvents(events []interpreter.Event, eventValidator validation.Validator) error {
-	var allErrors validation.Errors
+// LastCycleParser returns an EventsParser that takes in a list of events and returns a sorted subset
+// of that list which includes all of the events with the boot-time of the previous cycle sorted from oldest to newest
+// by birthdate. LastCycleParser also runs the list of events through the eventValidator
+// and returns an error containing all of the invalid events with their corresponding errors.
+func LastCycleParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
+	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
+		lastCycle, _, err := parserHelper(eventsHistory, currentEvent, comparator)
+		if err != nil {
+			return []interpreter.Event{}, err
+		}
+
+		return lastCycle, nil
+	}
+}
+
+// LastCycleToCurrentParser returns an EventsParser that takes in a list of events and returns a sorted subset
+// of that list. The slice includes all of the events with the boot-time of the previous cycle
+// as well as all events with the latest boot-time that have a birthdate less than or equal to the current event.
+// The returned slice is sorted from oldest to newest primarily by boot-time, and then by birthdate.
+func LastCycleToCurrentParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
+	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
+		lastCycle, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
+		if err != nil {
+			return []interpreter.Event{}, err
+		}
+
+		cycle := append(lastCycle, currentCycle...)
+		return cycle, nil
+	}
+}
+
+// parserHelper takes in a list of events and returns two slices: one containing all of the events with the previous cycle's boot-time and
+// another containing events with the latest boot-time. It also runs all of the events in the events list through the comparator, and if the
+// comparator returns true, parserHelper will stop and return two empty slices and the error returned by the comparator. The two slices are sorted
+// from oldest to newest.
+func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, comparator Comparator) ([]interpreter.Event, []interpreter.Event, error) {
+	latestBootTime, err := currentEvent.BootTime()
+	if err != nil || latestBootTime <= 0 {
+		return []interpreter.Event{}, []interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
+	}
+
+	var lastCycle []interpreter.Event
+	var currentCycle []interpreter.Event
+	var lastBoottime int64
 	for _, event := range events {
-		if valid, err := eventValidator.Valid(event); !valid {
-			allErrors = append(allErrors, validation.EventWithError{
-				Event:       event,
-				OriginalErr: err,
-			})
+		bootTime, _ := event.BootTime()
+		if bootTime <= 0 {
+			continue
+		}
+
+		// If comparator returns true, it means we should stop parsing
+		// because there is something wrong with currentEvent
+		if bad, err := comparator.Compare(event, currentEvent); bad {
+			return []interpreter.Event{}, []interpreter.Event{}, err
+		}
+
+		if bootTime > lastBoottime && bootTime < latestBootTime {
+			lastBoottime = bootTime
+			lastCycle = nil
+		}
+
+		if bootTime == lastBoottime {
+			lastCycle = append(lastCycle, event)
+		}
+
+		// make sure event is not the current event
+		if bootTime == latestBootTime && event.Birthdate < currentEvent.Birthdate && event.TransactionUUID != currentEvent.TransactionUUID {
+			currentCycle = append(currentCycle, event)
 		}
 	}
 
-	if len(allErrors) == 0 {
-		return nil
+	sort.Slice(lastCycle, func(a, b int) bool {
+		return lastCycle[a].Birthdate < lastCycle[b].Birthdate
+	})
+
+	currentCycle = append(currentCycle, currentEvent)
+	sort.Slice(currentCycle, func(a, b int) bool {
+		return currentCycle[a].Birthdate < currentCycle[b].Birthdate
+	})
+
+	return lastCycle, currentCycle, nil
+}
+
+// returns default comparator and validator
+func setComparator(comparator Comparator) Comparator {
+	if comparator == nil {
+		comparator = ComparatorFunc(func(interpreter.Event, interpreter.Event) (bool, error) {
+			return false, nil
+		})
 	}
 
-	return allErrors
+	return comparator
 }
 
 // rebootEventsParser is a helper function that takes in a list of events
