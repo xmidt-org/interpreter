@@ -21,6 +21,14 @@ func (p EventsParserFunc) Parse(events []interpreter.Event, currentEvent interpr
 // primarily by boot-time, and then by birthdate. BootCycleParser also runs the list of events through the eventValidator
 // and returns an error containing all of the invalid events with their corresponding errors.
 func BootCycleParser(comparator Comparator, eventValidator validation.Validator) EventsParserFunc {
+	if comparator == nil {
+		comparator = DefaultComparator()
+	}
+
+	if eventValidator == nil {
+		eventValidator = validation.DefaultValidator()
+	}
+
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
 		latestBootTime, err := currentEvent.BootTime()
 		if err != nil || latestBootTime <= 0 {

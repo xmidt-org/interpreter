@@ -314,6 +314,44 @@ func (suite *CycleTestSuite) TestCurrentEventInvalidBootTime() {
 
 }
 
+func (suite *CycleTestSuite) TestNilComparatorNilValidator() {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	suite.Nil(err)
+
+	futureBootTime := now.Add(1 * time.Hour)
+	currentBootTime := now
+	prevBootTime := now.Add(-1 * time.Hour)
+	olderBootTime := now.Add(-2 * time.Hour)
+	bootTimes := []testEventSetup{
+		testEventSetup{
+			bootTime:  currentBootTime,
+			numEvents: 3,
+		},
+		testEventSetup{
+			bootTime:  olderBootTime,
+			numEvents: 3,
+		},
+		testEventSetup{
+			bootTime:  prevBootTime,
+			numEvents: 4,
+		},
+		testEventSetup{
+			bootTime:  futureBootTime,
+			numEvents: 2,
+		},
+	}
+
+	suite.createEvents(bootTimes...)
+	fromEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2), "event:device-status/mac:112233445566/reboot-pending")
+	suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 3), "event:device-status/mac:112233445566/offline")
+	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
+	expectedEvents := suite.parseEvents(fromEvent, toEvent)
+	parser := BootCycleParser(nil, nil)
+	results, err := parser.Parse(suite.Events, toEvent)
+	suite.Equal(expectedEvents, results)
+	suite.Nil(err)
+}
+
 func TestBootCycleParser(t *testing.T) {
 	suite.Run(t, new(CycleTestSuite))
 }

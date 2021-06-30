@@ -58,6 +58,13 @@ func (c Comparators) Compare(baseEvent interpreter.Event, newEvent interpreter.E
 	return false, nil
 }
 
+// DefaultComparator is a Comparator that always returns false and nil.
+func DefaultComparator() ComparatorFunc {
+	return func(_ interpreter.Event, _ interpreter.Event) (bool, error) {
+		return false, nil
+	}
+}
+
 // OlderBootTimeComparator returns a ComparatorFunc to check and see if newEvent's boot-time is
 // less than the baseEvent's boot-time. If it is, it returns true and an error.
 // OlderBootTimeComparator assumes that newEvent has a valid boot-time

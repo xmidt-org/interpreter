@@ -10,6 +10,7 @@ tools/eventsGenerator/eventsGenerator
 cmd/eventsParser/eventsParser
 cmd/cycleValidators/cycleValidators
 cmd/parseAndValidate/parseAndValidate
+cmd/cmd
 
 
 # Test binary, build with `go test -c`

@@ -72,6 +72,13 @@ func (v Validators) Valid(e interpreter.Event) (bool, error) {
 	return false, allErrors
 }
 
+// DefaultValidator is a Validator that always returns true and nil.
+func DefaultValidator() ValidatorFunc {
+	return func(_ interpreter.Event) (bool, error) {
+		return true, nil
+	}
+}
+
 // BootTimeValidator returns a ValidatorFunc that checks if an
 // Event's boot-time is valid (meaning parsable), greater than 0, and within the
 // bounds deemed valid by the TimeValidation parameters.
