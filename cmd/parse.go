@@ -45,7 +45,7 @@ func printBootCycles(cycles []BootCycle) {
 			data = append(data, eventInfo)
 		}
 	}
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
+	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetRowLine(true)
 	table.AppendBulk(data)
 	table.Render()
