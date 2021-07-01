@@ -509,6 +509,7 @@ func TestSessionOfflineValidator(t *testing.T) {
 		})
 	}
 }
+
 func TestTransactionUUIDValidator(t *testing.T) {
 	tests := []struct {
 		description     string
@@ -557,6 +558,7 @@ func TestTransactionUUIDValidator(t *testing.T) {
 		})
 	}
 }
+
 func TestDetermineMetadataValues(t *testing.T) {
 	fields := []string{"test", "test1", "test2", "test3"}
 	event := interpreter.Event{
@@ -582,6 +584,334 @@ func TestDetermineMetadataValues(t *testing.T) {
 		assert.Equal(val, v)
 	}
 
+}
+
+func TestEventOrderValidator(t *testing.T) {
+	tests := []struct {
+		description   string
+		events        []interpreter.Event
+		order         []string
+		expectedValid bool
+		actualOrder   []string
+	}{
+		{
+			description: "empty list",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/online"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/operational"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/fully-manageable"},
+			},
+			order:         []string{},
+			expectedValid: true,
+		},
+		{
+			description: "valid",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/online"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/operational"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-1"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-2"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-3"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/fully-manageable"},
+			},
+			order:         []string{"event-1", "event-2", "event-3"},
+			expectedValid: true,
+		},
+		{
+			description: "valid-list length equals order length",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-1"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-2"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-3"},
+			},
+			order:         []string{"event-1", "event-2", "event-3"},
+			expectedValid: true,
+		},
+		{
+			description: "start event not found",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/online"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/operational"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-2"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-3"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/fully-manageable"},
+			},
+			order:         []string{"event-1", "event-2", "event-3"},
+			expectedValid: false,
+		},
+		{
+			description: "end event not found",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/online"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/operational"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-1"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-2"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/fully-manageable"},
+			},
+			order:         []string{"event-1", "event-2", "event-3"},
+			expectedValid: false,
+			actualOrder:   []string{"event-1", "event-2", "fully-manageable"},
+		},
+		{
+			description: "current index less than order length",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/online"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/operational"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-1"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-2"},
+			},
+			order:         []string{"event-1", "event-2", "event-3"},
+			expectedValid: false,
+			actualOrder:   []string{"event-1", "event-2"},
+		},
+		{
+			description: "missing middle events",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/online"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/operational"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-1"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-2"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-5"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/fully-manageable"},
+			},
+			order:         []string{"event-1", "event-2", "event-3", "event-4", "event-5"},
+			expectedValid: false,
+			actualOrder:   []string{"event-1", "event-2", "event-5", "fully-manageable"},
+		},
+		{
+			description: "extra events in between",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/online"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/operational"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-1"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/random1"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-2"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-3"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/random2"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/random3"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-4"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-5"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/fully-manageable"},
+			},
+			order:         []string{"event-1", "event-2", "event-3", "event-4", "event-5"},
+			expectedValid: false,
+			actualOrder:   []string{"event-1", "random1", "event-2", "event-3", "random2", "random3", "event-4", "event-5"},
+		},
+		{
+			description: "scrambled",
+			events: []interpreter.Event{
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/online"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/operational"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-1"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-3"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-2"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-5"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/event-4"},
+				interpreter.Event{Destination: "event:device-status/mac:112233445566/fully-manageable"},
+			},
+			order:         []string{"event-1", "event-2", "event-3", "event-4", "event-5"},
+			expectedValid: false,
+			actualOrder:   []string{"event-1", "event-3", "event-2", "event-5", "event-4", "fully-manageable"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			validator := EventOrderValidator(tc.order)
+			valid, err := validator.Valid(tc.events)
+			assert.Equal(tc.expectedValid, valid)
+			if !tc.expectedValid {
+				var cvErr CycleValidationErr
+				assert.True(errors.As(err, &cvErr))
+				assert.Equal(tc.actualOrder, cvErr.ErrorDetailValues)
+			}
+		})
+	}
+}
+
+func TestTrueRebootValidator(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+	tests := []struct {
+		description   string
+		events        []interpreter.Event
+		expectedValid bool
+		expectedErr   error
+	}{
+		{
+			description: "valid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/fully-manageable",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/operational",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-3 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-10 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-5 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-10 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: true,
+		},
+		{
+			description: "no events before",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/fully-manageable",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: true,
+		},
+		{
+			description: "invalid",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/fully-manageable",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-5 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: false,
+			expectedErr:   ErrFalseReboot,
+		},
+		{
+			description: "multiple consecutive online events",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/fully-manageable",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-2 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/online",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-3 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-10 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-5 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-10 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: false,
+			expectedErr:   ErrFalseReboot,
+		},
+		{
+			description: "no online event",
+			events: []interpreter.Event{
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/fully-manageable",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+					},
+					Birthdate: now.UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/operational",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-5 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-3 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					Destination: "event:device-status/mac:112233445566/offline",
+					Metadata: map[string]string{
+						interpreter.BootTimeKey: fmt.Sprint(now.Add(-10 * time.Minute).Unix()),
+					},
+					Birthdate: now.Add(-5 * time.Minute).UnixNano(),
+				},
+			},
+			expectedValid: false,
+			expectedErr:   ErrNoReboot,
+		},
+	}
+
+	validator := TrueRebootValidator()
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			valid, err := validator.Valid(tc.events)
+			assert.Equal(tc.expectedValid, valid)
+			if !tc.expectedValid {
+				assert.True(errors.Is(err, tc.expectedErr))
+			}
+		})
+	}
 }
 
 func TestParseSessions(t *testing.T) {

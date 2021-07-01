@@ -7,6 +7,28 @@ import (
 	"github.com/xmidt-org/interpreter/validation"
 )
 
+// sortFunc is a function type passed into the sort function.
+type sortFunc func(a, b int) bool
+
+func birthdateDescendingSortFunc(events []interpreter.Event) sortFunc {
+	return func(a, b int) bool {
+		return events[a].Birthdate > events[b].Birthdate
+	}
+}
+
+func bootTimeDescendingSortFunc(events []interpreter.Event) sortFunc {
+	return func(a, b int) bool {
+		boottimeA, _ := events[a].BootTime()
+		boottimeB, _ := events[b].BootTime()
+		if boottimeA != boottimeB {
+			return boottimeA > boottimeB
+		}
+
+		return events[a].Birthdate > events[b].Birthdate
+
+	}
+}
+
 // EventsParserFunc is a function that returns the relevant events from a slice of events.
 type EventsParserFunc func([]interpreter.Event, interpreter.Event) ([]interpreter.Event, error)
 
@@ -30,7 +52,7 @@ func RebootParser(comparator Comparator) EventsParserFunc {
 		}
 
 		lastCycle = rebootEventsParser(lastCycle)
-		cycle := append(lastCycle, currentCycle...)
+		cycle := append(currentCycle, lastCycle...)
 		return cycle, nil
 	}
 }
@@ -63,7 +85,7 @@ func LastCycleToCurrentParser(comparator Comparator) EventsParserFunc {
 			return []interpreter.Event{}, err
 		}
 
-		cycle := append(lastCycle, currentCycle...)
+		cycle := append(currentCycle, lastCycle...)
 		return cycle, nil
 	}
 }
@@ -108,24 +130,18 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 		}
 	}
 
-	sort.Slice(lastCycle, func(a, b int) bool {
-		return lastCycle[a].Birthdate < lastCycle[b].Birthdate
-	})
+	sort.Slice(lastCycle, birthdateDescendingSortFunc(lastCycle))
 
 	currentCycle = append(currentCycle, currentEvent)
-	sort.Slice(currentCycle, func(a, b int) bool {
-		return currentCycle[a].Birthdate < currentCycle[b].Birthdate
-	})
+	sort.Slice(currentCycle, birthdateDescendingSortFunc(currentCycle))
 
 	return lastCycle, currentCycle, nil
 }
 
-// returns default comparator and validator
+// returns default comparator
 func setComparator(comparator Comparator) Comparator {
 	if comparator == nil {
-		comparator = ComparatorFunc(func(interpreter.Event, interpreter.Event) (bool, error) {
-			return false, nil
-		})
+		comparator = DefaultComparator()
 	}
 
 	return comparator
@@ -139,22 +155,20 @@ func rebootEventsParser(events []interpreter.Event) []interpreter.Event {
 		return events
 	}
 
-	sort.Slice(events, func(a, b int) bool {
-		return events[a].Birthdate < events[b].Birthdate
-	})
+	sort.Slice(events, birthdateDescendingSortFunc(events))
 
-	var lastOfflineIndex int
+	lastOfflineIndex := len(events) - 1
 	for i := len(events) - 1; i >= 0; i-- {
 		event := events[i]
 		eventType, err := event.EventType()
 		if err == nil {
 			if eventType == interpreter.RebootPendingEventType {
-				return events[i:]
-			} else if eventType == interpreter.OfflineEventType && i > lastOfflineIndex {
+				return events[:i+1]
+			} else if eventType == interpreter.OfflineEventType && i < lastOfflineIndex {
 				lastOfflineIndex = i
 			}
 		}
 	}
 
-	return events[lastOfflineIndex:]
+	return events[:lastOfflineIndex+1]
 }

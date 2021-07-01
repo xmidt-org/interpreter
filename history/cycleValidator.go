@@ -3,6 +3,7 @@ package history
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/xmidt-org/interpreter"
 	"github.com/xmidt-org/interpreter/validation"
@@ -13,6 +14,9 @@ var (
 	ErrRepeatID             = errors.New("repeat transaction uuid found")
 	ErrMissingOnlineEvent   = errors.New("session does not have online event")
 	ErrMissingOfflineEvent  = errors.New("session does not have offline event")
+	ErrInvalidEventOrder    = errors.New("invalid event order")
+	ErrFalseReboot          = errors.New("not a true reboot")
+	ErrNoReboot             = errors.New("no reboot found")
 )
 
 // CycleValidatorFunc is a function type that takes in a slice of events
@@ -133,6 +137,94 @@ func SessionOfflineValidator(excludeFunc func(events []interpreter.Event, id str
 			ErrorTag:          validation.MissingOfflineEvent,
 		}
 
+	}
+}
+
+// EventOrderValidator returns a CycleValidatorFunc that validates that there exists, within the history of events,
+// particular events in the proper order.
+func EventOrderValidator(order []string) CycleValidatorFunc {
+	return func(events []interpreter.Event) (bool, error) {
+		if len(order) == 0 {
+			return true, nil
+		}
+
+		currentIndex := 0
+		validOrder := true
+		var actualOrder []string
+		for _, event := range events {
+			if currentIndex >= len(order) {
+				break
+			}
+
+			eventType, _ := event.EventType()
+			if currentIndex > 0 {
+				actualOrder = append(actualOrder, eventType)
+				if eventType != order[currentIndex] {
+					validOrder = false
+				} else {
+					currentIndex++
+				}
+			} else if currentIndex == 0 {
+				if eventType == order[currentIndex] {
+					actualOrder = append(actualOrder, eventType)
+					currentIndex++
+				}
+			}
+		}
+
+		if !validOrder || currentIndex != len(order) {
+			return false, CycleValidationErr{
+				OriginalErr:       ErrInvalidEventOrder,
+				ErrorDetailKey:    "event_order",
+				ErrorDetailValues: actualOrder,
+				ErrorTag:          validation.InvalidEventOrder,
+			}
+		}
+
+		return true, nil
+	}
+}
+
+// TrueRebootValidator returns a CycleValidatorFunc that validates that the latest online event is the result of a
+// true reboot, meaning that it has a boot-time that is different from the event that precedes it.
+// If an online event is not found, false and an error is returned.
+func TrueRebootValidator() CycleValidatorFunc {
+	return func(events []interpreter.Event) (bool, error) {
+		eventsCopy := make([]interpreter.Event, len(events))
+		copy(eventsCopy, events)
+		sort.Slice(eventsCopy, func(a, b int) bool {
+			boottimeA, _ := eventsCopy[a].BootTime()
+			boottimeB, _ := eventsCopy[b].BootTime()
+			if boottimeA != boottimeB {
+				return boottimeA > boottimeB
+			}
+
+			return eventsCopy[a].Birthdate > eventsCopy[b].Birthdate
+		})
+
+		for i, event := range eventsCopy {
+			eventType, _ := event.EventType()
+			if eventType == interpreter.OnlineEventType {
+				if i < len(eventsCopy)-1 {
+					nextEvent := eventsCopy[i+1]
+					currentBootTime, err := event.BootTime()
+					nextEventBootTime, e := nextEvent.BootTime()
+					if err != nil || e != nil || currentBootTime == nextEventBootTime {
+						return false, CycleValidationErr{
+							OriginalErr: ErrFalseReboot,
+							ErrorTag:    validation.FalseReboot,
+						}
+					}
+				}
+
+				return true, nil
+			}
+		}
+
+		return false, CycleValidationErr{
+			OriginalErr: ErrNoReboot,
+			ErrorTag:    validation.NoReboot,
+		}
 	}
 }
 

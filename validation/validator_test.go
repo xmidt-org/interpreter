@@ -10,6 +10,14 @@ import (
 	"github.com/xmidt-org/interpreter"
 )
 
+func TestDefaultValidator(t *testing.T) {
+	assert := assert.New(t)
+	validator := DefaultValidator()
+	valid, err := validator.Valid(interpreter.Event{})
+	assert.True(valid)
+	assert.Nil(err)
+}
+
 func TestValidators(t *testing.T) {
 	assert := assert.New(t)
 	testEvent := interpreter.Event{}
