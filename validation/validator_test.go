@@ -788,11 +788,3 @@ func TestGetBootTime(t *testing.T) {
 		})
 	}
 }
-
-func TestDefaultValidator(t *testing.T) {
-	assert := assert.New(t)
-	validator := DefaultValidator()
-	valid, err := validator.Valid(interpreter.Event{})
-	assert.True(valid)
-	assert.Nil(err)
-}
