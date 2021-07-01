@@ -44,6 +44,13 @@ func (c ComparatorFunc) Compare(baseEvent interpreter.Event, newEvent interprete
 	return c(baseEvent, newEvent)
 }
 
+// DefaultComparator is a Comparator that always returns false and nil.
+func DefaultComparator() ComparatorFunc {
+	return func(_ interpreter.Event, _ interpreter.Event) (bool, error) {
+		return false, nil
+	}
+}
+
 // Comparators are a list of objects that implement the Comparator interface
 type Comparators []Comparator
 

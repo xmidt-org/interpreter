@@ -50,6 +50,13 @@ func (vf ValidatorFunc) Valid(e interpreter.Event) (bool, error) {
 	return vf(e)
 }
 
+// DefaultValidator is a Validator that always returns true and nil.
+func DefaultValidator() ValidatorFunc {
+	return func(_ interpreter.Event) (bool, error) {
+		return true, nil
+	}
+}
+
 // Validators are a list of objects that implement the Validator interface
 type Validators []Validator
 

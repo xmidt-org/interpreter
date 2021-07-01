@@ -48,16 +48,7 @@ func (suite *CycleTestSuite) createEvents(eventSetups ...testEventSetup) {
 func (suite *CycleTestSuite) parseEvents(from interpreter.Event, to interpreter.Event) []interpreter.Event {
 	eventsCopy := make([]interpreter.Event, len(suite.Events))
 	copy(eventsCopy, suite.Events)
-	sort.Slice(eventsCopy, func(a, b int) bool {
-		boottimeA, _ := eventsCopy[a].BootTime()
-		boottimeB, _ := eventsCopy[b].BootTime()
-		if boottimeA != boottimeB {
-			return boottimeA < boottimeB
-		}
-
-		return eventsCopy[a].Birthdate < eventsCopy[b].Birthdate
-
-	})
+	sort.Slice(eventsCopy, bootTimeDescendingSortFunc(eventsCopy))
 
 	fromIndex := 0
 	toIndex := len(eventsCopy) - 1
@@ -90,7 +81,7 @@ func (suite *CycleTestSuite) parseSameBootTime(currentEvent interpreter.Event, u
 		}
 	}
 
-	sort.Slice(eventsCopy, birthdateAscendingSortFunc(eventsCopy))
+	sort.Slice(eventsCopy, birthdateDescendingSortFunc(eventsCopy))
 	return eventsCopy
 }
 
@@ -216,30 +207,30 @@ func (suite *CycleTestSuite) TestValidParsers() {
 	mockComparator := new(mockComparator)
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
-	fromEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2), "event:device-status/mac:112233445566/reboot-pending")
+	earlierEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2), "event:device-status/mac:112233445566/reboot-pending")
 	suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 3), "event:device-status/mac:112233445566/offline")
-	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
+	laterEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
 
 	// Test RebootParser
-	expectedEvents := suite.parseEvents(fromEvent, toEvent)
+	expectedEvents := suite.parseEvents(laterEvent, earlierEvent)
 	parser := RebootParser(mockComparator)
-	results, err := parser.Parse(suite.Events, toEvent)
+	results, err := parser.Parse(suite.Events, laterEvent)
 	suite.Equal(expectedEvents, results)
 	suite.Nil(err)
 
 	// Test LastCycleParser
-	expectedLastCycle := suite.parseSameBootTime(fromEvent, false)
+	expectedLastCycle := suite.parseSameBootTime(earlierEvent, false)
 	lastCycleParser := LastCycleParser(mockComparator)
-	lastCycle, err := lastCycleParser.Parse(suite.Events, toEvent)
+	lastCycle, err := lastCycleParser.Parse(suite.Events, laterEvent)
 	suite.Equal(expectedLastCycle, lastCycle)
 	suite.Nil(err)
 
 	// Test LastCycleToCurrentParser
-	lastCycleEvents := suite.parseSameBootTime(fromEvent, false)
-	currentCycleEvents := suite.parseSameBootTime(toEvent, true)
-	allExpectedEvents := append(lastCycleEvents, currentCycleEvents...)
+	lastCycleEvents := suite.parseSameBootTime(earlierEvent, false)
+	currentCycleEvents := suite.parseSameBootTime(laterEvent, true)
+	allExpectedEvents := append(currentCycleEvents, lastCycleEvents...)
 	lastCycleToCurrentParser := LastCycleToCurrentParser(mockComparator)
-	cycle, err := lastCycleToCurrentParser.Parse(suite.Events, toEvent)
+	cycle, err := lastCycleToCurrentParser.Parse(suite.Events, laterEvent)
 	suite.Equal(allExpectedEvents, cycle)
 	suite.Nil(err)
 }
@@ -275,11 +266,11 @@ func (suite *CycleTestSuite) TestNoRebootPendingEvent() {
 	mockComparator := new(mockComparator)
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 	suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 1), "event:device-status/mac:112233445566/offline")
-	fromEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 3), "event:device-status/mac:112233445566/offline")
-	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
-	expectedEvents := suite.parseEvents(fromEvent, toEvent)
+	earlierEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 3), "event:device-status/mac:112233445566/offline")
+	laterEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
+	expectedEvents := suite.parseEvents(laterEvent, earlierEvent)
 	parser := RebootParser(mockComparator)
-	results, err := parser.Parse(suite.Events, toEvent)
+	results, err := parser.Parse(suite.Events, laterEvent)
 	suite.Equal(expectedEvents, results)
 	suite.Nil(err)
 }

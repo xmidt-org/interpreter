@@ -11,6 +11,14 @@ import (
 	"github.com/xmidt-org/interpreter/validation"
 )
 
+func TestDefaultComparator(t *testing.T) {
+	assert := assert.New(t)
+	comparator := DefaultComparator()
+	bad, err := comparator.Compare(interpreter.Event{}, interpreter.Event{})
+	assert.False(bad)
+	assert.Nil(err)
+}
+
 func TestComparators(t *testing.T) {
 	assert := assert.New(t)
 	testEvent := interpreter.Event{}
