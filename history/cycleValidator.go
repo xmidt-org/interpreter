@@ -19,6 +19,11 @@ var (
 	ErrNoReboot             = errors.New("no reboot found")
 )
 
+// CycleValidator validates a list of events.
+type CycleValidator interface {
+	Valid(events []interpreter.Event) (bool, error)
+}
+
 // CycleValidatorFunc is a function type that takes in a slice of events
 // and returns whether the slice of events is valid or not.
 type CycleValidatorFunc func(events []interpreter.Event) (valid bool, err error)
@@ -26,6 +31,35 @@ type CycleValidatorFunc func(events []interpreter.Event) (valid bool, err error)
 // Valid runs the CycleValidatorFunc.
 func (cf CycleValidatorFunc) Valid(events []interpreter.Event) (bool, error) {
 	return cf(events)
+}
+
+// DefaultCycleValidator is a CycleValidator that always returns true and nil.
+func DefaultCycleValidator() CycleValidatorFunc {
+	return func(_ []interpreter.Event) (bool, error) {
+		return true, nil
+	}
+}
+
+// CycleValidators are a list of objects that implement the CycleValidator interface
+type CycleValidators []CycleValidator
+
+// Valid runs through a list of CycleValidators and checks that the list of events
+// is valid against each validator. It runs through all of the validators
+// and returns the errors collected from each one. If at least one validator returns
+// false, then false is returned.
+func (c CycleValidators) Valid(events []interpreter.Event) (bool, error) {
+	var allErrors validation.Errors
+	for _, validator := range c {
+		if valid, err := validator.Valid(events); !valid {
+			allErrors = append(allErrors, err)
+		}
+	}
+
+	if len(allErrors) == 0 {
+		return true, nil
+	}
+
+	return false, allErrors
 }
 
 // MetadataValidator takes in a slice of metadata keys and returns a CycleValidatorFunc that
