@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 - Add last cycle and last cycle to current event parsers. [#32](https://github.com/xmidt-org/interpreter/pull/32)
 - Add cycle validators to validate the order of events and that the latest online event is the result of a true reboot. [#33](https://github.com/xmidt-org/interpreter/pull/33)
-- Change parsers to sort event list by newest to oldest. Add current cycle parser. [#34](https://github.com/xmidt-org/interpreter/pull/34)
+- Change parsers to sort event list by newest to oldest, add current cycle parser, add `CycleValidators` type. [#34](https://github.com/xmidt-org/interpreter/pull/34)
 
 ## [v0.0.4]
 - Add validator to validate consistent device id and enhancements to boot-time validator. Introduce tags and `TaggedError` interface. [#18](https://github.com/xmidt-org/interpreter/pull/18)

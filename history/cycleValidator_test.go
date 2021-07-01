@@ -12,6 +12,39 @@ import (
 	"github.com/xmidt-org/interpreter"
 )
 
+func TestDefaultCycleValidator(t *testing.T) {
+	assert := assert.New(t)
+	validator := DefaultCycleValidator()
+	valid, err := validator.Valid([]interpreter.Event{})
+	assert.True(valid)
+	assert.Nil(err)
+}
+
+func TestCycleValidators(t *testing.T) {
+	assert := assert.New(t)
+	testEvents := []interpreter.Event{}
+	validators := CycleValidators([]CycleValidator{testCycleValidator(true, nil), testCycleValidator(true, nil)})
+	valid, err := validators.Valid(testEvents)
+	assert.True(valid)
+	assert.Nil(err)
+
+	validators = CycleValidators([]CycleValidator{
+		testCycleValidator(true, nil),
+		testCycleValidator(false, errors.New("invalid event")),
+		testCycleValidator(false, errors.New("another invalid event")),
+	})
+	valid, err = validators.Valid(testEvents)
+	assert.False(valid)
+	assert.Contains(err.Error(), "invalid event")
+	assert.Contains(err.Error(), "another invalid event")
+}
+
+func testCycleValidator(returnBool bool, returnErr error) CycleValidatorFunc {
+	return func(events []interpreter.Event) (bool, error) {
+		return returnBool, returnErr
+	}
+}
+
 func TestMetadataValidator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
