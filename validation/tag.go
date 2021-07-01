@@ -36,6 +36,9 @@ const (
 	RepeatedTransactionUUID // multiple events in an event list have the same transcation uuid
 	MissingOnlineEvent      // session is missing online event
 	MissingOfflineEvent     // session is missing offline event
+	InvalidEventOrder       // wrong event order
+	FalseReboot             // not a true reboot
+	NoReboot                // no reboot found
 )
 
 const (
@@ -61,6 +64,9 @@ const (
 	RepeatedTransactionUUIDStr = "repeated_transaction_uuid"
 	MissingOnlineEventStr      = "missing_online_event"
 	MissingOfflineEventStr     = "missing_offline_event"
+	InvalidEventOrderStr       = "invalid_event_order"
+	FalseRebootStr             = "false_reboot"
+	NoRebootStr                = "no_reboot"
 )
 
 var (
@@ -87,6 +93,9 @@ var (
 		RepeatedTransactionUUID: RepeatedTransactionUUIDStr,
 		MissingOnlineEvent:      MissingOnlineEventStr,
 		MissingOfflineEvent:     MissingOfflineEventStr,
+		InvalidEventOrder:       InvalidEventOrderStr,
+		FalseReboot:             FalseRebootStr,
+		NoReboot:                NoRebootStr,
 	}
 
 	stringToTag = map[string]Tag{
@@ -112,6 +121,9 @@ var (
 		RepeatedTransactionUUIDStr: RepeatedTransactionUUID,
 		MissingOnlineEventStr:      MissingOnlineEvent,
 		MissingOfflineEventStr:     MissingOfflineEvent,
+		InvalidEventOrderStr:       InvalidEventOrder,
+		FalseRebootStr:             FalseReboot,
+		NoRebootStr:                NoReboot,
 	}
 )
 

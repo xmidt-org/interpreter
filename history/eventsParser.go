@@ -7,6 +7,15 @@ import (
 	"github.com/xmidt-org/interpreter/validation"
 )
 
+// sortFunc is a function type passed into the sort function.
+type sortFunc func(a, b int) bool
+
+func birthdateAscendingSortFunc(events []interpreter.Event) sortFunc {
+	return func(a, b int) bool {
+		return events[a].Birthdate < events[b].Birthdate
+	}
+}
+
 // EventsParserFunc is a function that returns the relevant events from a slice of events.
 type EventsParserFunc func([]interpreter.Event, interpreter.Event) ([]interpreter.Event, error)
 
@@ -108,14 +117,10 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 		}
 	}
 
-	sort.Slice(lastCycle, func(a, b int) bool {
-		return lastCycle[a].Birthdate < lastCycle[b].Birthdate
-	})
+	sort.Slice(lastCycle, birthdateAscendingSortFunc(lastCycle))
 
 	currentCycle = append(currentCycle, currentEvent)
-	sort.Slice(currentCycle, func(a, b int) bool {
-		return currentCycle[a].Birthdate < currentCycle[b].Birthdate
-	})
+	sort.Slice(currentCycle, birthdateAscendingSortFunc(currentCycle))
 
 	return lastCycle, currentCycle, nil
 }
@@ -139,9 +144,7 @@ func rebootEventsParser(events []interpreter.Event) []interpreter.Event {
 		return events
 	}
 
-	sort.Slice(events, func(a, b int) bool {
-		return events[a].Birthdate < events[b].Birthdate
-	})
+	sort.Slice(events, birthdateAscendingSortFunc(events))
 
 	var lastOfflineIndex int
 	for i := len(events) - 1; i >= 0; i-- {
