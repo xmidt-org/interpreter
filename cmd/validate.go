@@ -35,10 +35,11 @@ type MetadataKey struct {
 	CheckWithinCycle bool
 }
 
-type CycleErrs struct {
-	Cycle            BootCycle
-	CycleErrs        error
-	ValidationErrors error
+type EventErrs struct {
+	event interpreter.Event
+	cycleID string
+	cycleErrs error
+	eventErrs error
 }
 
 func init() {
@@ -47,20 +48,25 @@ func init() {
 }
 
 func validate(events []interpreter.Event) {
-	// cycles := parseIntoCycles(events, comparator)
-	// cycleValidationInfo := make([]CycleErrs, len(cycles))
-	// for _, cycle := range cycles {
-	// 	eventErrors := make(validation.Errors, len(cycle.Events))
-	// 	for i, event := range cycle.Events {
-	// 		valid, err := eventsValidator.Valid(event)
-	// 		eventErrors[i] = validation.EventWithError{
-	// 			Event:       event,
-	// 			OriginalErr: err,
-	// 		}
-	// 	}
+	cycles := parseIntoCycles(events, comparator)
+	var allErrors []EventErrs
+	for _, cycle := range cycles {
+		
+		for i, event := range cycle.Events {
+			valid, err := eventsValidator.Valid(event)
+			eventErrors[i] = validation.EventWithError{
+				Event:       event,
+				OriginalErr: err,
+			}
+		}
+	}
+}
 
-	// 	cycleErrs := cyclesValidators
-	// }
+func validateCycle(cycle BootCycle) error {
+	var allErrors validation.Validators
+	for _, validator := range cyclesValidators {
+		if valid, 
+	}
 }
 
 func createCycleValidators() []history.CycleValidatorFunc {
