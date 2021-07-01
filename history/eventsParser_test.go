@@ -67,13 +67,13 @@ func (suite *CycleTestSuite) parseEvents(from interpreter.Event, to interpreter.
 	return eventsCopy[fromIndex : toIndex+1]
 }
 
-func (suite *CycleTestSuite) parseSameBootTime(currentEvent interpreter.Event, upToBirthdate bool) []interpreter.Event {
+func (suite *CycleTestSuite) parseSameBootTime(currentEvent interpreter.Event, upToCurrentEvent bool) []interpreter.Event {
 	currentBootTime, _ := currentEvent.BootTime()
 	var eventsCopy []interpreter.Event
 	for _, event := range suite.Events {
 		bootTime, _ := event.BootTime()
 		if bootTime == currentBootTime {
-			if !upToBirthdate {
+			if !upToCurrentEvent {
 				eventsCopy = append(eventsCopy, event)
 			} else if event.Birthdate <= currentEvent.Birthdate {
 				eventsCopy = append(eventsCopy, event)
@@ -225,6 +225,13 @@ func (suite *CycleTestSuite) TestValidParsers() {
 	suite.Equal(expectedLastCycle, lastCycle)
 	suite.Nil(err)
 
+	// Test CurrentCycleParser
+	expectedCurrentCycle := suite.parseSameBootTime(laterEvent, true)
+	currentCycleParser := CurrentCycleParser(mockComparator)
+	currentCycle, err := currentCycleParser.Parse(suite.Events, laterEvent)
+	suite.Equal(expectedCurrentCycle, currentCycle)
+	suite.Nil(err)
+
 	// Test LastCycleToCurrentParser
 	lastCycleEvents := suite.parseSameBootTime(earlierEvent, false)
 	currentCycleEvents := suite.parseSameBootTime(laterEvent, true)
@@ -310,6 +317,7 @@ func (suite *CycleTestSuite) TestInvalidComparator() {
 	parsers := []EventsParserFunc{
 		RebootParser(mockComparator),
 		LastCycleParser(mockComparator),
+		CurrentCycleParser(mockComparator),
 		LastCycleToCurrentParser(mockComparator),
 	}
 
