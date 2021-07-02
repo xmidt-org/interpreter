@@ -133,6 +133,9 @@ func BirthdateValidator(tv TimeValidation) ValidatorFunc {
 func BirthdateAlignmentValidator(maxDuration time.Duration) ValidatorFunc {
 	timestampRegex := regexp.MustCompile(`/(?P<content>[^/]+)`)
 	index := timestampRegex.SubexpIndex("content")
+	if maxDuration < 0 {
+		maxDuration = maxDuration * -1
+	}
 	return func(e interpreter.Event) (bool, error) {
 		matches := timestampRegex.FindAllStringSubmatch(e.Destination, -1)
 		birthdate := time.Unix(0, e.Birthdate)
@@ -228,6 +231,9 @@ func ConsistentDeviceIDValidator() ValidatorFunc {
 func BootDurationValidator(minDuration time.Duration) ValidatorFunc {
 	timestampRegex := regexp.MustCompile(`/(?P<content>[^/]+)`)
 	index := timestampRegex.SubexpIndex("content")
+	if minDuration < 0 {
+		minDuration = minDuration * -1
+	}
 	return func(e interpreter.Event) (bool, error) {
 		bootTime, err := getBootTime(e)
 		if err != nil {
