@@ -97,7 +97,7 @@ func (suite *CycleTestSuite) setEventDestination(eventID string, destination str
 }
 
 func (suite *CycleTestSuite) clearEventDestinations() {
-	for i, _ := range suite.Events {
+	for i := range suite.Events {
 		suite.Events[i].Destination = ""
 	}
 }

@@ -92,11 +92,10 @@ func printEvents(events []interpreter.Event) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeader([]string{"ID", "Boot-time", "Birthdate", "Destination"})
-	var data [][]string
+	data := make([][]string, 0, len(events))
 	for _, event := range events {
 		data = append(data, getEventInfo(event))
 	}
-	table.SetAutoMergeCells(true)
 	table.AppendBulk(data)
 	table.Render()
 }

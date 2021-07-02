@@ -33,7 +33,6 @@ import (
 var (
 	eventValidator  validation.Validator
 	cycleValidators history.CycleValidator
-	comparator      history.Comparator
 )
 
 var validateCmd = &cobra.Command{
@@ -41,7 +40,6 @@ var validateCmd = &cobra.Command{
 	Short: "validate a list of cycles and events and print",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		eventValidator, cycleValidators = createValidators()
-		comparator = createComparator()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		getEvents(validate)
@@ -103,7 +101,7 @@ func printValidationTable(info []eventErrs) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeader([]string{"Cycle", "ID", "Boot-time", "Destination", "Event Errors", "Cycle Errors"})
-	var data [][]string
+	data := make([][]string, 0, len(info))
 	for _, eventErr := range info {
 		data = append(data, getValidationRowInfo(eventErr))
 	}
@@ -184,8 +182,4 @@ func createEventValidators(config ValidatorConfig) validation.Validator {
 	})
 
 	return validators
-}
-
-func createComparator() history.Comparator {
-	return history.DefaultComparator()
 }

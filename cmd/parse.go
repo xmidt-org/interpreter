@@ -64,12 +64,10 @@ func printBootCycles(cycles []bootCycle) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeader([]string{"Cycle ID", "Boot-time", "Birthdate", "Destination", "ID"})
-	var data [][]string
+	data := make([][]string, 0, len(cycles))
 	for _, cycle := range cycles {
 		cycleInfo := getCycleInfo(cycle)
-		for _, eventInfo := range cycleInfo {
-			data = append(data, eventInfo)
-		}
+		data = append(data, cycleInfo...)
 	}
 
 	mergeColumns := []int{0}
@@ -83,7 +81,7 @@ func printBootCycles(cycles []bootCycle) {
 }
 
 func getCycleInfo(cycle bootCycle) [][]string {
-	var cycleInfo [][]string
+	cycleInfo := make([][]string, 0, len(cycle.Events))
 	for _, event := range cycle.Events {
 		eventInfo := []string{cycle.ID, getBoottimeString(event), getBirthdateString(event), event.Destination, event.TransactionUUID}
 		cycleInfo = append(cycleInfo, eventInfo)

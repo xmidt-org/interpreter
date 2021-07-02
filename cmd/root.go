@@ -35,10 +35,6 @@ var (
 	}
 )
 
-func execute() error {
-	return rootCmd.Execute()
-}
-
 func init() {
 	cobra.OnInitialize(initializeConfig)
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./interpreter.yaml)")

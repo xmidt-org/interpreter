@@ -29,7 +29,6 @@ import (
 	"github.com/xmidt-org/httpaux"
 	"github.com/xmidt-org/httpaux/retry"
 	"github.com/xmidt-org/interpreter"
-	"go.uber.org/fx"
 )
 
 type CodexConfig struct {
@@ -44,13 +43,6 @@ type CodexClient struct {
 	Address string
 	Client  httpaux.Client
 	Auth    acquire.Acquirer
-}
-
-func Provide() fx.Option {
-	return fx.Provide(
-		createCodexAuth,
-		createClient,
-	)
 }
 
 func createCodexAuth(config CodexConfig) (acquire.Acquirer, error) {
