@@ -26,6 +26,11 @@ type testEventSetup struct {
 	numEvents int
 }
 
+type eventToChange struct {
+	eventID          string
+	eventDestination string
+}
+
 func (suite *CycleTestSuite) createEvents(eventSetups ...testEventSetup) {
 	var events []interpreter.Event
 	for _, setup := range eventSetups {
@@ -67,17 +72,11 @@ func (suite *CycleTestSuite) parseEvents(from interpreter.Event, to interpreter.
 	return eventsCopy[fromIndex : toIndex+1]
 }
 
-func (suite *CycleTestSuite) parseSameBootTime(currentEvent interpreter.Event, upToCurrentEvent bool) []interpreter.Event {
-	currentBootTime, _ := currentEvent.BootTime()
+func (suite *CycleTestSuite) parseEventsBy(addToList func(event interpreter.Event) bool) []interpreter.Event {
 	var eventsCopy []interpreter.Event
 	for _, event := range suite.Events {
-		bootTime, _ := event.BootTime()
-		if bootTime == currentBootTime {
-			if !upToCurrentEvent {
-				eventsCopy = append(eventsCopy, event)
-			} else if event.Birthdate <= currentEvent.Birthdate {
-				eventsCopy = append(eventsCopy, event)
-			}
+		if addToList(event) {
+			eventsCopy = append(eventsCopy, event)
 		}
 	}
 
@@ -95,6 +94,12 @@ func (suite *CycleTestSuite) setEventDestination(eventID string, destination str
 	}
 
 	return interpreter.Event{}
+}
+
+func (suite *CycleTestSuite) clearEventDestinations() {
+	for i, _ := range suite.Events {
+		suite.Events[i].Destination = ""
+	}
 }
 
 func (suite *CycleTestSuite) TestParserHelperValid() {
@@ -127,11 +132,16 @@ func (suite *CycleTestSuite) TestParserHelperValid() {
 	suite.createEvents(bootTimes...)
 	mockComparator := new(mockComparator)
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
-	fromEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 1), "event:device-status/mac:112233445566/reboot-pending")
 	suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 3), "event:device-status/mac:112233445566/offline")
 	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
-	expectedLastCycle := suite.parseSameBootTime(fromEvent, false)
-	expectedCurrentCycle := suite.parseSameBootTime(toEvent, true)
+	expectedLastCycle := suite.parseEventsBy(func(e interpreter.Event) bool {
+		boottime, _ := e.BootTime()
+		return boottime == prevBootTime.Unix()
+	})
+	expectedCurrentCycle := suite.parseEventsBy(func(e interpreter.Event) bool {
+		boottime, _ := e.BootTime()
+		return (boottime == currentBootTime.Unix() && e.Birthdate <= toEvent.Birthdate) || e.TransactionUUID == toEvent.TransactionUUID
+	})
 	lastCycle, currentCycle, err := parserHelper(suite.Events, toEvent, mockComparator)
 	suite.Equal(expectedLastCycle, lastCycle)
 	suite.Equal(expectedCurrentCycle, currentCycle)
@@ -176,18 +186,22 @@ func (suite *CycleTestSuite) TestParserHelperErr() {
 	suite.True(errors.Is(err, testErr))
 }
 
-func (suite *CycleTestSuite) TestValidParsers() {
+func (suite *CycleTestSuite) TestParsersValid() {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	suite.Nil(err)
+
+	mockComparator := new(mockComparator)
+	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
 	futureBootTime := now.Add(1 * time.Hour)
 	currentBootTime := now
 	prevBootTime := now.Add(-1 * time.Hour)
 	olderBootTime := now.Add(-2 * time.Hour)
+
 	bootTimes := []testEventSetup{
 		testEventSetup{
 			bootTime:  currentBootTime,
-			numEvents: 3,
+			numEvents: 4,
 		},
 		testEventSetup{
 			bootTime:  olderBootTime,
@@ -204,82 +218,136 @@ func (suite *CycleTestSuite) TestValidParsers() {
 	}
 
 	suite.createEvents(bootTimes...)
-	mockComparator := new(mockComparator)
-	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
 
-	earlierEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2), "event:device-status/mac:112233445566/reboot-pending")
-	suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 3), "event:device-status/mac:112233445566/offline")
-	laterEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
-
-	// Test RebootParser
-	expectedEvents := suite.parseEvents(laterEvent, earlierEvent)
-	parser := RebootParser(mockComparator)
-	results, err := parser.Parse(suite.Events, laterEvent)
-	suite.Equal(expectedEvents, results)
-	suite.Nil(err)
-
-	// Test LastCycleParser
-	expectedLastCycle := suite.parseSameBootTime(earlierEvent, false)
-	lastCycleParser := LastCycleParser(mockComparator)
-	lastCycle, err := lastCycleParser.Parse(suite.Events, laterEvent)
-	suite.Equal(expectedLastCycle, lastCycle)
-	suite.Nil(err)
-
-	// Test CurrentCycleParser
-	expectedCurrentCycle := suite.parseSameBootTime(laterEvent, true)
-	currentCycleParser := CurrentCycleParser(mockComparator)
-	currentCycle, err := currentCycleParser.Parse(suite.Events, laterEvent)
-	suite.Equal(expectedCurrentCycle, currentCycle)
-	suite.Nil(err)
-
-	// Test LastCycleToCurrentParser
-	lastCycleEvents := suite.parseSameBootTime(earlierEvent, false)
-	currentCycleEvents := suite.parseSameBootTime(laterEvent, true)
-	allExpectedEvents := append(currentCycleEvents, lastCycleEvents...)
-	lastCycleToCurrentParser := LastCycleToCurrentParser(mockComparator)
-	cycle, err := lastCycleToCurrentParser.Parse(suite.Events, laterEvent)
-	suite.Equal(allExpectedEvents, cycle)
-	suite.Nil(err)
-}
-
-func (suite *CycleTestSuite) TestNoRebootPendingEvent() {
-	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
-	suite.Nil(err)
-
-	futureBootTime := now.Add(1 * time.Hour)
-	currentBootTime := now
-	prevBootTime := now.Add(-1 * time.Hour)
-	olderBootTime := now.Add(-2 * time.Hour)
-	bootTimes := []testEventSetup{
-		testEventSetup{
-			bootTime:  currentBootTime,
-			numEvents: 3,
+	tests := []struct {
+		description   string
+		parser        EventsParserFunc
+		startingEvent eventToChange
+		endingEvent   eventToChange
+		currentEvent  eventToChange
+		parseFunc     func(interpreter.Event) bool
+	}{
+		{
+			description:   "last cycle parser",
+			parser:        LastCycleParser(mockComparator),
+			startingEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", prevBootTime.Unix(), 1)},
+			endingEvent:   eventToChange{eventID: fmt.Sprintf("%d-%d", prevBootTime.Unix(), 4)},
+			currentEvent:  eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
+			parseFunc: func(e interpreter.Event) bool {
+				boottime, _ := e.BootTime()
+				return boottime == prevBootTime.Unix()
+			},
 		},
-		testEventSetup{
-			bootTime:  olderBootTime,
-			numEvents: 3,
+		{
+			description:   "last cycle to current parser",
+			parser:        LastCycleToCurrentParser(mockComparator),
+			startingEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", prevBootTime.Unix(), 1)},
+			endingEvent:   eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
+			currentEvent:  eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
 		},
-		testEventSetup{
-			bootTime:  prevBootTime,
-			numEvents: 4,
+		{
+			description:   "current cycle parser",
+			parser:        CurrentCycleParser(mockComparator),
+			startingEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 1)},
+			endingEvent:   eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
+			currentEvent:  eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
 		},
-		testEventSetup{
-			bootTime:  futureBootTime,
-			numEvents: 2,
+		{
+			description: "reboot parser-fully-manageable",
+			parser:      RebootParser(mockComparator),
+			startingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2),
+				eventDestination: "event:device-status/mac:112233445566/reboot-pending",
+			},
+			endingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", currentBootTime.Unix(), 3),
+				eventDestination: "event:device-status/mac:112233445566/fully-manageable",
+			},
+			currentEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 4)},
+		},
+		{
+			description: "reboot parser-operational event",
+			parser:      RebootParser(mockComparator),
+			startingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2),
+				eventDestination: "event:device-status/mac:112233445566/reboot-pending",
+			},
+			endingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2),
+				eventDestination: "event:device-status/mac:112233445566/operational",
+			},
+			currentEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 4)},
+		},
+		{
+			description: "reboot parser-online event",
+			parser:      RebootParser(mockComparator),
+			startingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2),
+				eventDestination: "event:device-status/mac:112233445566/reboot-pending",
+			},
+			endingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", currentBootTime.Unix(), 1),
+				eventDestination: "event:device-status/mac:112233445566/online",
+			},
+			currentEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 3)},
+		},
+		{
+			description: "reboot parser-no reboot pending event",
+			parser:      RebootParser(mockComparator),
+			startingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2),
+				eventDestination: "event:device-status/mac:112233445566/offline",
+			},
+			endingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", currentBootTime.Unix(), 3),
+				eventDestination: "event:device-status/mac:112233445566/fully-manageable",
+			},
+			currentEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 4)},
+		},
+		{
+			description: "reboot to current parser-no reboot pending event",
+			parser:      RebootToCurrentParser(mockComparator),
+			startingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2),
+				eventDestination: "event:device-status/mac:112233445566/offline",
+			},
+			endingEvent: eventToChange{
+				eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 3),
+			},
+			currentEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 3)},
+		},
+		{
+			description: "reboot to current parser with reboot pending event",
+			parser:      RebootToCurrentParser(mockComparator),
+			startingEvent: eventToChange{
+				eventID:          fmt.Sprintf("%d-%d", prevBootTime.Unix(), 2),
+				eventDestination: "event:device-status/mac:112233445566/reboot-pending",
+			},
+			endingEvent: eventToChange{
+				eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 3),
+			},
+			currentEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 3)},
 		},
 	}
 
-	suite.createEvents(bootTimes...)
-	mockComparator := new(mockComparator)
-	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
-	suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 1), "event:device-status/mac:112233445566/offline")
-	earlierEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", prevBootTime.Unix(), 3), "event:device-status/mac:112233445566/offline")
-	laterEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
-	expectedEvents := suite.parseEvents(laterEvent, earlierEvent)
-	parser := RebootParser(mockComparator)
-	results, err := parser.Parse(suite.Events, laterEvent)
-	suite.Equal(expectedEvents, results)
-	suite.Nil(err)
+	for _, tc := range tests {
+		suite.Run(tc.description, func() {
+			suite.clearEventDestinations()
+			currentEvent := suite.setEventDestination(tc.currentEvent.eventID, tc.currentEvent.eventDestination)
+			startingEvent := suite.setEventDestination(tc.startingEvent.eventID, tc.startingEvent.eventDestination)
+			endingEvent := suite.setEventDestination(tc.endingEvent.eventID, tc.endingEvent.eventDestination)
+			var expectedCycle []interpreter.Event
+			if tc.parseFunc != nil {
+				expectedCycle = suite.parseEventsBy(tc.parseFunc)
+			} else {
+				expectedCycle = suite.parseEvents(endingEvent, startingEvent)
+			}
+			cycle, err := tc.parser.Parse(suite.Events, currentEvent)
+			suite.Equal(expectedCycle, cycle)
+			suite.Nil(err)
+		})
+
+	}
 }
 
 func (suite *CycleTestSuite) TestInvalidComparator() {
@@ -316,6 +384,7 @@ func (suite *CycleTestSuite) TestInvalidComparator() {
 	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
 	parsers := []EventsParserFunc{
 		RebootParser(mockComparator),
+		RebootToCurrentParser(mockComparator),
 		LastCycleParser(mockComparator),
 		CurrentCycleParser(mockComparator),
 		LastCycleToCurrentParser(mockComparator),
@@ -363,7 +432,9 @@ func (suite *CycleTestSuite) TestCurrentEventInvalidBootTime() {
 
 	mockComparator := new(mockComparator)
 	parsers := []EventsParserFunc{
+		CurrentCycleParser(mockComparator),
 		RebootParser(mockComparator),
+		RebootToCurrentParser(mockComparator),
 		LastCycleParser(mockComparator),
 		LastCycleToCurrentParser(mockComparator),
 	}
@@ -380,11 +451,11 @@ func (suite *CycleTestSuite) TestCurrentEventInvalidBootTime() {
 
 }
 
-func TestRebootParser(t *testing.T) {
+func TestParsers(t *testing.T) {
 	suite.Run(t, new(CycleTestSuite))
 }
 
-func TestRebootEventsParser(t *testing.T) {
+func TestRebootStartParser(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	rebootPendingEvent := interpreter.Event{
@@ -449,6 +520,25 @@ func TestRebootEventsParser(t *testing.T) {
 			},
 		},
 		{
+			description: "without reboot-pending or offline event",
+			events: []interpreter.Event{
+				interpreter.Event{
+					TransactionUUID: "2",
+					Destination:     "event:device-status/mac:112233445566/online",
+					Birthdate:       now.Add(2 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					TransactionUUID: "4",
+					Destination:     "event:device-status/mac:112233445566/online",
+					Birthdate:       now.Add(4 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					TransactionUUID: "5",
+					Birthdate:       now.Add(5 * time.Minute).UnixNano(),
+				},
+			},
+		},
+		{
 			description: "empty list",
 			events:      []interpreter.Event{},
 		},
@@ -457,7 +547,7 @@ func TestRebootEventsParser(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			cycle := rebootEventsParser(tc.events)
+			cycle := rebootStartParser(tc.events)
 			assert.Equal(len(tc.expectedEventIDs), len(cycle))
 			for _, event := range cycle {
 				assert.True(tc.expectedEventIDs[event.TransactionUUID])
@@ -466,7 +556,128 @@ func TestRebootEventsParser(t *testing.T) {
 	}
 }
 
-func TestSetComparatorValidator(t *testing.T) {
+func TestRebootEndParser(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+	fullyManageableEvent := interpreter.Event{
+		TransactionUUID: "fully-manageable",
+		Destination:     "event:device-status/mac:112233445566/fully-manageable",
+		Birthdate:       now.UnixNano(),
+	}
+	operationalEvent := interpreter.Event{
+		TransactionUUID: "operational",
+		Destination:     "event:device-status/mac:112233445566/operational",
+		Birthdate:       now.Add(-1 * time.Minute).UnixNano(),
+	}
+	onlineEvent := interpreter.Event{
+		TransactionUUID: "online",
+		Destination:     "event:device-status/mac:112233445566/online",
+		Birthdate:       now.Add(-2 * time.Minute).UnixNano(),
+	}
+	events := []interpreter.Event{
+		interpreter.Event{
+			TransactionUUID: "2",
+			Destination:     "event:device-status/mac:112233445566/online",
+			Birthdate:       now.Add(2 * time.Minute).UnixNano(),
+		},
+		interpreter.Event{
+			TransactionUUID: "3",
+			Destination:     "event:device-status/mac:112233445566/offline",
+			Birthdate:       now.Add(3 * time.Minute).UnixNano(),
+		},
+		interpreter.Event{
+			TransactionUUID: "-3",
+			Destination:     "event:device-status/mac:112233445566/offline",
+			Birthdate:       now.Add(-3 * time.Minute).UnixNano(),
+		},
+		interpreter.Event{
+			TransactionUUID: "-4",
+			Birthdate:       now.Add(-4 * time.Minute).UnixNano(),
+		},
+		interpreter.Event{
+			TransactionUUID: "4",
+			Destination:     "event:device-status/mac:112233445566/online",
+			Birthdate:       now.Add(4 * time.Minute).UnixNano(),
+		},
+		interpreter.Event{
+			TransactionUUID: "5",
+			Birthdate:       now.Add(5 * time.Minute).UnixNano(),
+		},
+	}
+
+	tests := []struct {
+		description      string
+		events           []interpreter.Event
+		expectedEventIDs map[string]bool
+	}{
+		{
+			description: "with fully-manageable event",
+			events:      append(events, fullyManageableEvent, onlineEvent, operationalEvent),
+			expectedEventIDs: map[string]bool{
+				fullyManageableEvent.TransactionUUID: true,
+				onlineEvent.TransactionUUID:          true,
+				operationalEvent.TransactionUUID:     true,
+				"-3":                                 true,
+				"-4":                                 true,
+			},
+		},
+		{
+			description: "with operational event",
+			events:      append(events, onlineEvent, operationalEvent),
+			expectedEventIDs: map[string]bool{
+				onlineEvent.TransactionUUID:      true,
+				operationalEvent.TransactionUUID: true,
+				"-3":                             true,
+				"-4":                             true,
+			},
+		},
+		{
+			description: "with online event",
+			events:      append(events, onlineEvent),
+			expectedEventIDs: map[string]bool{
+				onlineEvent.TransactionUUID: true,
+				"-3":                        true,
+				"-4":                        true,
+			},
+		},
+		{
+			description: "no online, operational, fully-manageable event",
+			events: []interpreter.Event{
+				interpreter.Event{
+					TransactionUUID: "2",
+					Destination:     "event:device-status/mac:112233445566/offline",
+					Birthdate:       now.Add(2 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					TransactionUUID: "4",
+					Destination:     "event:device-status/mac:112233445566/offline",
+					Birthdate:       now.Add(4 * time.Minute).UnixNano(),
+				},
+				interpreter.Event{
+					TransactionUUID: "5",
+					Birthdate:       now.Add(5 * time.Minute).UnixNano(),
+				},
+			},
+		},
+		{
+			description: "empty list",
+			events:      []interpreter.Event{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			cycle := rebootEndParser(tc.events)
+			assert.Equal(len(tc.expectedEventIDs), len(cycle))
+			for _, event := range cycle {
+				assert.True(tc.expectedEventIDs[event.TransactionUUID])
+			}
+		})
+	}
+}
+
+func TestSetComparator(t *testing.T) {
 	assert := assert.New(t)
 	comparator := setComparator(nil)
 	assert.NotNil(comparator)

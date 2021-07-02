@@ -53,9 +53,11 @@ var (
 	// DeviceIDRegex is used to parse a device id from anywhere.
 	DeviceIDRegex = regexp.MustCompile(fmt.Sprintf(`(?P<%s>(?i)mac|uuid|dns|serial):(?P<%s>[^/]+)`, SchemeSubexpName, AuthoritySubexpName))
 
-	OnlineEventType        = "online"
-	OfflineEventType       = "offline"
-	RebootPendingEventType = "reboot-pending"
+	OnlineEventType          = "online"
+	OfflineEventType         = "offline"
+	RebootPendingEventType   = "reboot-pending"
+	FullyManageableEventType = "fully-manageable"
+	OperationalEventType     = "operational"
 )
 
 // Event is the struct that contains the wrp.Message fields along with the birthdate

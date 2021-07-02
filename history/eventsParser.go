@@ -39,10 +39,10 @@ func (p EventsParserFunc) Parse(events []interpreter.Event, currentEvent interpr
 
 // RebootParser returns an EventsParser that takes in a list of events and returns a sorted subset of that list
 // containing events that are relevant to the latest reboot. The slice starts with the last reboot-pending (if available) or last offline event
-// and includes all events afterwards that have a birthdate less than or equal to the current event.
-// The returned slice is sorted from newest to oldest primarily by boot-time, and then by birthdate.
-// RebootParser also runs the list of events CurrentCycleParser also runs the list of events through the comparator
-// to see if the current event is valid.
+// and includes all events afterwards that have a birthdate less than the first fully-manageable event (if available) or the first
+// operational event (if available) or the first online event of the current cycle. The returned slice is sorted from
+// newest to oldest primarily by boot-time, and then by birthdate.
+// RebootParser also runs the list of events through the comparator to see if the current event is valid.
 func RebootParser(comparator Comparator) EventsParserFunc {
 	comparator = setComparator(comparator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
@@ -51,7 +51,27 @@ func RebootParser(comparator Comparator) EventsParserFunc {
 			return []interpreter.Event{}, err
 		}
 
-		lastCycle = rebootEventsParser(lastCycle)
+		rebootStart := rebootStartParser(lastCycle)
+		rebootEnd := rebootEndParser(currentCycle)
+		cycle := append(rebootEnd, rebootStart...)
+		return cycle, nil
+	}
+}
+
+// RebootToCurrentParser returns an EventsParser that takes in a list of events and returns a sorted subset of that list
+// containing events that are relevant to the latest reboot. The slice starts with the last reboot-pending (if available)
+// or last offline event and includes all events afterwards that have a birthdate less than or equal to the current event.
+// The returned slice is sorted from newest to oldest primarily by boot-time, and then by birthdate.
+// RebootToCurrentParser also runs the list of events through the comparator to see if the current event is valid.
+func RebootToCurrentParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
+	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
+		lastCycle, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
+		if err != nil {
+			return []interpreter.Event{}, err
+		}
+
+		lastCycle = rebootStartParser(lastCycle)
 		cycle := append(currentCycle, lastCycle...)
 		return cycle, nil
 	}
@@ -72,21 +92,6 @@ func LastCycleParser(comparator Comparator) EventsParserFunc {
 	}
 }
 
-// CurrentCycleParser returns an EventsParser that takes in a list of events and returns a sorted subset
-// of that list which includes all of the events with the boot-time of the current cycle sorted from newest to oldest
-// by birthdate. CurrentCycleParser also runs the list of events through the comparator to see if the current event is valid.
-func CurrentCycleParser(comparator Comparator) EventsParserFunc {
-	comparator = setComparator(comparator)
-	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
-		_, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
-		if err != nil {
-			return []interpreter.Event{}, err
-		}
-
-		return currentCycle, nil
-	}
-}
-
 // LastCycleToCurrentParser returns an EventsParser that takes in a list of events and returns a sorted subset
 // of that list. The slice includes all of the events with the boot-time of the previous cycle
 // as well as all events with the latest boot-time that have a birthdate less than or equal to the current event.
@@ -104,10 +109,26 @@ func LastCycleToCurrentParser(comparator Comparator) EventsParserFunc {
 	}
 }
 
+// CurrentCycleParser returns an EventsParser that takes in a list of events and returns a sorted subset
+// of that list which includes all of the events with the boot-time of the current cycle sorted from newest to oldest
+// by birthdate. CurrentCycleParser also runs the list of events through the comparator to see if the current event is valid.
+func CurrentCycleParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
+	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
+		_, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
+		if err != nil {
+			return []interpreter.Event{}, err
+		}
+
+		return currentCycle, nil
+	}
+}
+
 // parserHelper takes in a list of events and returns two slices: one containing all of the events with the previous cycle's boot-time and
-// another containing events with the latest boot-time. It also runs all of the events in the events list through the comparator, and if the
-// comparator returns true, parserHelper will stop and return two empty slices and the error returned by the comparator. The two slices are sorted
-// from oldest to newest.
+// another containing events with the latest boot-time and birthdate less than the currentEvent.
+// It also runs all of the events in the events list through the comparator, and if the comparator returns true,
+// parserHelper will stop and return two empty slices and the error returned by the comparator.
+// The two slices are sorted from newest to oldest.
 func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, comparator Comparator) ([]interpreter.Event, []interpreter.Event, error) {
 	latestBootTime, err := currentEvent.BootTime()
 	if err != nil || latestBootTime <= 0 {
@@ -161,28 +182,66 @@ func setComparator(comparator Comparator) Comparator {
 	return comparator
 }
 
-// rebootEventsParser is a helper function that takes in a list of events
+// rebootStartParser is a helper function that takes in a list of events
 // and returns a slice containing the last reboot-pending or offline event and any events that come after.
+// If the slice does not contain a reboot-pending or offline event, an empty list is returned.
 // Assumes that all events in the list have the same boot-time.
-func rebootEventsParser(events []interpreter.Event) []interpreter.Event {
+func rebootStartParser(events []interpreter.Event) []interpreter.Event {
 	if len(events) == 0 {
 		return events
 	}
 
 	sort.Slice(events, birthdateDescendingSortFunc(events))
 
-	lastOfflineIndex := len(events) - 1
-	for i := len(events) - 1; i >= 0; i-- {
-		event := events[i]
+	lastOfflineIndex := -1
+	for i, event := range events {
 		eventType, err := event.EventType()
 		if err == nil {
 			if eventType == interpreter.RebootPendingEventType {
 				return events[:i+1]
-			} else if eventType == interpreter.OfflineEventType && i < lastOfflineIndex {
+			} else if eventType == interpreter.OfflineEventType && lastOfflineIndex == -1 {
 				lastOfflineIndex = i
 			}
 		}
 	}
 
 	return events[:lastOfflineIndex+1]
+}
+
+// rebootEndParser is a helper function that takes in a list of events
+// and returns a slice containing events before the first fully-manageable event. If a fully-manageable event
+// doesn't exist, it looks for the first operational event, then online event. If all these events don't exist, it
+// returns an empty list. Assumes that all events in the list have the same boot-time and that the order of the boot-cycle
+// is: online, operational, fully-manageable.
+func rebootEndParser(events []interpreter.Event) []interpreter.Event {
+	if len(events) == 0 {
+		return events
+	}
+
+	sort.Slice(events, birthdateDescendingSortFunc(events))
+	operationalIndex := -1
+	onlineIndex := -1
+	for i := len(events) - 1; i >= 0; i-- {
+		event := events[i]
+		eventType, err := event.EventType()
+		if err == nil {
+			if eventType == interpreter.FullyManageableEventType {
+				return events[i:]
+			} else if eventType == interpreter.OperationalEventType && operationalIndex == -1 {
+				operationalIndex = i
+			} else if eventType == interpreter.OnlineEventType && onlineIndex == -1 {
+				onlineIndex = i
+			}
+		}
+	}
+
+	if operationalIndex > -1 {
+		return events[operationalIndex:]
+	}
+
+	if onlineIndex > -1 {
+		return events[onlineIndex:]
+	}
+
+	return []interpreter.Event{}
 }
