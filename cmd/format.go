@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	timeLayout = "Jan 2 15:04:05.00000"
+	timeFormat = "Jan 2 15:04:05.00000"
 )
 
 func getBoottimeString(event interpreter.Event) string {
@@ -18,11 +18,11 @@ func getBoottimeString(event interpreter.Event) string {
 	if err != nil || boottime <= 0 {
 		return "error"
 	}
-	return time.Unix(boottime, 0).UTC().Format(timeLayout)
+	return time.Unix(boottime, 0).UTC().Format(timeFormat)
 }
 
 func getBirthdateString(event interpreter.Event) string {
-	return time.Unix(0, event.Birthdate).UTC().Format(timeLayout)
+	return time.Unix(0, event.Birthdate).UTC().Format(timeFormat)
 }
 
 func errorTagsToString(err error) string {

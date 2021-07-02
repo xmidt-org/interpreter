@@ -13,7 +13,7 @@ import (
 	"github.com/xmidt-org/interpreter"
 )
 
-var GetEventsCmd = &cobra.Command{
+var getEventsCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Gets and prints list of events",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -22,7 +22,7 @@ var GetEventsCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(GetEventsCmd)
+	rootCmd.AddCommand(getEventsCmd)
 }
 
 func getEvents(eventsCallback func([]interpreter.Event)) {

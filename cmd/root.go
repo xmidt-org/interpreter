@@ -12,21 +12,21 @@ var (
 	eventsFile      string
 	useRebootParser bool
 
-	RootCmd = &cobra.Command{
+	rootCmd = &cobra.Command{
 		Use:   "cmd",
 		Short: "cmd gets, parses, and validates a list of events",
 	}
 )
 
-func Execute() error {
-	return RootCmd.Execute()
+func execute() error {
+	return rootCmd.Execute()
 }
 
 func init() {
 	cobra.OnInitialize(initializeConfig)
-	RootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./interpreter.yaml)")
-	RootCmd.PersistentFlags().StringVarP(&eventsFile, "events", "e", "", "json file containing list of events")
-	RootCmd.PersistentFlags().BoolVar(&useRebootParser, "reboot", false, "whether to use reboot parser or parse cycles based on boot-time")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./interpreter.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&eventsFile, "events", "e", "", "json file containing list of events")
+	rootCmd.PersistentFlags().BoolVarP(&useRebootParser, "reboot", "r", false, "whether to parse just reboot events or parse cycles based on boot-time")
 }
 
 func initializeConfig() {

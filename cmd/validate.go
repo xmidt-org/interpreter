@@ -19,12 +19,11 @@ var (
 	comparator      history.Comparator
 )
 
-var ValidateCmd = &cobra.Command{
+var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "validate a list of cycles and events and print",
 	PreRun: func(cmd *cobra.Command, args []string) {
-		eventValidator = createEventValidators()
-		cycleValidators = createCycleValidators()
+		eventValidator, cycleValidators = createValidators()
 		comparator = createComparator()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -32,12 +31,27 @@ var ValidateCmd = &cobra.Command{
 	},
 }
 
-type MetadataKey struct {
+type ValidatorConfig struct {
+	Metadata                   []MetadataKeyConfig
+	BirthdateAlignmentDuration time.Duration
+	MinBootDuration            time.Duration
+	ValidEventTypes            []string
+	BootTimeValidator          TimeValidationConfig
+	BirthdateValidator         TimeValidationConfig
+}
+
+type MetadataKeyConfig struct {
 	Key              string
 	CheckWithinCycle bool
 }
 
-type EventErrs struct {
+type TimeValidationConfig struct {
+	ValidFrom    time.Duration
+	ValidTo      time.Duration
+	MinValidYear int
+}
+
+type eventErrs struct {
 	event     interpreter.Event
 	cycleID   string
 	cycleErrs error
@@ -45,18 +59,18 @@ type EventErrs struct {
 }
 
 func init() {
-	ParseCmd.AddCommand(ValidateCmd)
-	RootCmd.AddCommand(ValidateCmd)
+	rootCmd.AddCommand(validateCmd)
+	parseCmd.AddCommand(validateCmd)
 }
 
 func validate(events []interpreter.Event) {
 	cycles := parseIntoCycles(events)
-	var allErrors []EventErrs
+	var allErrors []eventErrs
 	for _, cycle := range cycles {
 		_, cycleErrs := cycleValidators.Valid(cycle.Events)
 		for _, event := range cycle.Events {
 			_, err := eventValidator.Valid(event)
-			allErrors = append(allErrors, EventErrs{
+			allErrors = append(allErrors, eventErrs{
 				event:     event,
 				cycleID:   cycle.ID,
 				cycleErrs: cycleErrs,
@@ -68,35 +82,40 @@ func validate(events []interpreter.Event) {
 	printValidationTable(allErrors)
 }
 
-func printValidationTable(info []EventErrs) {
+func printValidationTable(info []eventErrs) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeader([]string{"Cycle", "Cycle Errors", "Event Errors", "Boot-time", "Destination", "ID"})
+	table.SetHeader([]string{"Cycle", "ID", "Boot-time", "Destination", "Event Errors", "Cycle Errors"})
 	var data [][]string
 	for _, eventErr := range info {
 		data = append(data, getValidationRowInfo(eventErr))
 	}
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 3})
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 2, 5})
 	table.SetRowLine(true)
 	table.AppendBulk(data)
 	table.Render()
 }
 
-func getValidationRowInfo(info EventErrs) []string {
+func getValidationRowInfo(info eventErrs) []string {
 	return []string{
 		info.cycleID,
-		errorTagsToString(info.cycleErrs),
-		errorTagsToString(info.eventErrs),
+		info.event.TransactionUUID,
 		getBoottimeString(info.event),
 		info.event.Destination,
-		info.event.TransactionUUID,
+		errorTagsToString(info.eventErrs),
+		errorTagsToString(info.cycleErrs),
 	}
 }
 
-func createCycleValidators() history.CycleValidator {
-	var metadataValidators []MetadataKey
-	viper.UnmarshalKey("metadataValidators", &metadataValidators)
+func createValidators() (validation.Validator, history.CycleValidator) {
+	var config ValidatorConfig
+	viper.UnmarshalKey("validators", &config)
+	cycleValidators := createCycleValidators(config)
+	eventValidator := createEventValidators(config)
+	return eventValidator, cycleValidators
+}
 
+func createCycleValidators(config ValidatorConfig) history.CycleValidator {
 	validators := []history.CycleValidator{
 		history.TransactionUUIDValidator(),
 		history.SessionOnlineValidator(func(_ []interpreter.Event, _ string) bool { return false }),
@@ -104,7 +123,7 @@ func createCycleValidators() history.CycleValidator {
 	}
 	var withinCycleChecks []string
 	var wholeCycleChecks []string
-	for _, metadata := range metadataValidators {
+	for _, metadata := range config.Metadata {
 		if metadata.CheckWithinCycle {
 			withinCycleChecks = append(withinCycleChecks, metadata.Key)
 		} else {
@@ -123,25 +142,25 @@ func createCycleValidators() history.CycleValidator {
 	return history.CycleValidators(validators)
 }
 
-func createEventValidators() validation.Validator {
+func createEventValidators(config ValidatorConfig) validation.Validator {
 	bootTimeValidator := validation.BootTimeValidator(validation.TimeValidator{
 		Current:      time.Now,
-		ValidFrom:    -8766 * time.Hour, // 1 year
-		ValidTo:      time.Hour,
-		MinValidYear: 2015,
+		ValidFrom:    config.BootTimeValidator.ValidFrom,
+		ValidTo:      config.BootTimeValidator.ValidTo,
+		MinValidYear: config.BootTimeValidator.MinValidYear,
 	})
 
 	birthdateValidator := validation.BirthdateValidator(validation.TimeValidator{
 		Current:      time.Now,
-		ValidFrom:    -8766 * time.Hour, // 1 year
-		ValidTo:      time.Hour,
-		MinValidYear: 2015,
+		ValidFrom:    config.BirthdateValidator.ValidFrom,
+		ValidTo:      config.BirthdateValidator.ValidTo,
+		MinValidYear: config.BirthdateValidator.MinValidYear,
 	})
 
-	birthdateAlignmentValidator := validation.BirthdateAlignmentValidator(time.Hour)
+	birthdateAlignmentValidator := validation.BirthdateAlignmentValidator(config.BirthdateAlignmentDuration)
 	consistentIDValidator := validation.ConsistentDeviceIDValidator()
-	bootDurationValidator := validation.BootDurationValidator(10 * time.Second)
-	eventTypeValidator := validation.EventTypeValidator([]string{"reboot-pending", "offline", "online", "operational", "fully-manageable"})
+	bootDurationValidator := validation.BootDurationValidator(config.MinBootDuration)
+	eventTypeValidator := validation.EventTypeValidator(config.ValidEventTypes)
 
 	validators := validation.Validators([]validation.Validator{
 		bootTimeValidator, birthdateValidator, birthdateAlignmentValidator, consistentIDValidator, bootDurationValidator, eventTypeValidator,

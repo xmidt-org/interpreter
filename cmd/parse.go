@@ -12,10 +12,10 @@ import (
 
 var parser history.EventsParserFunc
 
-var ParseCmd = &cobra.Command{
+var parseCmd = &cobra.Command{
 	Use:   "parse",
 	Short: "Parse list of events into cycles and print",
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if useRebootParser {
 			parser = history.RebootParser(nil)
 		} else {
@@ -27,15 +27,15 @@ var ParseCmd = &cobra.Command{
 	},
 }
 
-type BootCycle struct {
+type bootCycle struct {
 	ID     string
 	Events []interpreter.Event
 	Err    error
 }
 
 func init() {
-	GetEventsCmd.AddCommand(ParseCmd)
-	RootCmd.AddCommand(ParseCmd)
+	rootCmd.AddCommand(parseCmd)
+	getEventsCmd.AddCommand(parseCmd)
 }
 
 func parse(events []interpreter.Event) {
@@ -43,7 +43,7 @@ func parse(events []interpreter.Event) {
 	printBootCycles(cycles)
 }
 
-func printBootCycles(cycles []BootCycle) {
+func printBootCycles(cycles []bootCycle) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeader([]string{"Cycle ID", "Boot-time", "Birthdate", "Destination", "ID"})
@@ -65,7 +65,7 @@ func printBootCycles(cycles []BootCycle) {
 	table.Render()
 }
 
-func getCycleInfo(cycle BootCycle) [][]string {
+func getCycleInfo(cycle bootCycle) [][]string {
 	var cycleInfo [][]string
 	for _, event := range cycle.Events {
 		eventInfo := []string{cycle.ID, getBoottimeString(event), getBirthdateString(event), event.Destination, event.TransactionUUID}
@@ -74,15 +74,15 @@ func getCycleInfo(cycle BootCycle) [][]string {
 	return cycleInfo
 }
 
-func parseIntoCycles(events []interpreter.Event) []BootCycle {
+func parseIntoCycles(events []interpreter.Event) []bootCycle {
 	index := 0
-	var cycles []BootCycle
+	var cycles []bootCycle
 	seenBootTimes := make(map[int64]bool)
 	for _, event := range events {
 		if boottime, err := event.BootTime(); err == nil && !seenBootTimes[boottime] {
 			seenBootTimes[boottime] = true
 			parsedEvents, err := parser.Parse(events, event)
-			cycles = append(cycles, BootCycle{
+			cycles = append(cycles, bootCycle{
 				ID:     strconv.Itoa(index),
 				Events: parsedEvents,
 				Err:    err,
