@@ -9,19 +9,27 @@ import (
 	"github.com/xmidt-org/interpreter/validation"
 )
 
+const (
+	timeLayout = "Jan 2 15:04:05.00000"
+)
+
 func getBoottimeString(event interpreter.Event) string {
 	boottime, err := event.BootTime()
 	if err != nil || boottime <= 0 {
 		return "error"
 	}
-	return time.Unix(boottime, 0).UTC().Format(time.UnixDate)
+	return time.Unix(boottime, 0).UTC().Format(timeLayout)
 }
 
 func getBirthdateString(event interpreter.Event) string {
-	return time.Unix(0, event.Birthdate).UTC().Format(time.UnixDate)
+	return time.Unix(0, event.Birthdate).UTC().Format(timeLayout)
 }
 
 func errorTagsToString(err error) string {
+	if err == nil {
+		return ""
+	}
+
 	var taggedErr validation.TaggedError
 	var taggedErrs validation.TaggedErrors
 	var tags []validation.Tag
@@ -36,8 +44,7 @@ func errorTagsToString(err error) string {
 	var output strings.Builder
 	for i, tag := range tags {
 		if i > 0 {
-			output.WriteRune(',')
-			output.WriteRune(' ')
+			output.WriteRune('\n')
 		}
 		output.WriteString(tag.String())
 	}

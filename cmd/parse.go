@@ -10,9 +10,18 @@ import (
 	"github.com/xmidt-org/interpreter/history"
 )
 
+var parser history.EventsParserFunc
+
 var ParseCmd = &cobra.Command{
 	Use:   "parse",
 	Short: "Parse list of events into cycles and print",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if useRebootParser {
+			parser = history.RebootParser(nil)
+		} else {
+			parser = history.CurrentCycleParser(nil)
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		getEvents(parse)
 	},
@@ -30,7 +39,7 @@ func init() {
 }
 
 func parse(events []interpreter.Event) {
-	cycles := parseIntoCycles(events, nil)
+	cycles := parseIntoCycles(events)
 	printBootCycles(cycles)
 }
 
@@ -45,7 +54,12 @@ func printBootCycles(cycles []BootCycle) {
 			data = append(data, eventInfo)
 		}
 	}
-	table.SetAutoMergeCellsByColumnIndex([]int{0})
+
+	mergeColumns := []int{0}
+	if !useRebootParser {
+		mergeColumns = []int{0, 1}
+	}
+	table.SetAutoMergeCellsByColumnIndex(mergeColumns)
 	table.SetRowLine(true)
 	table.AppendBulk(data)
 	table.Render()
@@ -60,10 +74,9 @@ func getCycleInfo(cycle BootCycle) [][]string {
 	return cycleInfo
 }
 
-func parseIntoCycles(events []interpreter.Event, comparator history.Comparator) []BootCycle {
+func parseIntoCycles(events []interpreter.Event) []BootCycle {
 	index := 0
 	var cycles []BootCycle
-	parser := history.LastCycleToCurrentParser(comparator)
 	seenBootTimes := make(map[int64]bool)
 	for _, event := range events {
 		if boottime, err := event.BootTime(); err == nil && !seenBootTimes[boottime] {

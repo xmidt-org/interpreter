@@ -1,8 +1,10 @@
 package main
 
 import (
+	"os"
 	"time"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/viper"
 
 	"github.com/spf13/cobra"
@@ -12,17 +14,17 @@ import (
 )
 
 var (
-	eventsValidator  validation.Validator
-	cyclesValidators []history.CycleValidatorFunc
-	comparator       history.Comparator
+	eventValidator  validation.Validator
+	cycleValidators history.CycleValidator
+	comparator      history.Comparator
 )
 
 var ValidateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "validate a list of cycles and events and print",
 	PreRun: func(cmd *cobra.Command, args []string) {
-		eventsValidator = createEventValidators()
-		cyclesValidators = createCycleValidators()
+		eventValidator = createEventValidators()
+		cycleValidators = createCycleValidators()
 		comparator = createComparator()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -36,8 +38,8 @@ type MetadataKey struct {
 }
 
 type EventErrs struct {
-	event interpreter.Event
-	cycleID string
+	event     interpreter.Event
+	cycleID   string
 	cycleErrs error
 	eventErrs error
 }
@@ -48,32 +50,54 @@ func init() {
 }
 
 func validate(events []interpreter.Event) {
-	cycles := parseIntoCycles(events, comparator)
+	cycles := parseIntoCycles(events)
 	var allErrors []EventErrs
 	for _, cycle := range cycles {
-		
-		for i, event := range cycle.Events {
-			valid, err := eventsValidator.Valid(event)
-			eventErrors[i] = validation.EventWithError{
-				Event:       event,
-				OriginalErr: err,
-			}
+		_, cycleErrs := cycleValidators.Valid(cycle.Events)
+		for _, event := range cycle.Events {
+			_, err := eventValidator.Valid(event)
+			allErrors = append(allErrors, EventErrs{
+				event:     event,
+				cycleID:   cycle.ID,
+				cycleErrs: cycleErrs,
+				eventErrs: err,
+			})
 		}
 	}
+
+	printValidationTable(allErrors)
 }
 
-func validateCycle(cycle BootCycle) error {
-	var allErrors validation.Validators
-	for _, validator := range cyclesValidators {
-		if valid, 
+func printValidationTable(info []EventErrs) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetHeader([]string{"Cycle", "Cycle Errors", "Event Errors", "Boot-time", "Destination", "ID"})
+	var data [][]string
+	for _, eventErr := range info {
+		data = append(data, getValidationRowInfo(eventErr))
+	}
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 3})
+	table.SetRowLine(true)
+	table.AppendBulk(data)
+	table.Render()
+}
+
+func getValidationRowInfo(info EventErrs) []string {
+	return []string{
+		info.cycleID,
+		errorTagsToString(info.cycleErrs),
+		errorTagsToString(info.eventErrs),
+		getBoottimeString(info.event),
+		info.event.Destination,
+		info.event.TransactionUUID,
 	}
 }
 
-func createCycleValidators() []history.CycleValidatorFunc {
+func createCycleValidators() history.CycleValidator {
 	var metadataValidators []MetadataKey
 	viper.UnmarshalKey("metadataValidators", &metadataValidators)
 
-	validators := []history.CycleValidatorFunc{
+	validators := []history.CycleValidator{
 		history.TransactionUUIDValidator(),
 		history.SessionOnlineValidator(func(_ []interpreter.Event, _ string) bool { return false }),
 		history.SessionOfflineValidator(func(_ []interpreter.Event, _ string) bool { return false }),
@@ -96,7 +120,7 @@ func createCycleValidators() []history.CycleValidatorFunc {
 		validators = append(validators, history.MetadataValidator(wholeCycleChecks, false))
 	}
 
-	return validators
+	return history.CycleValidators(validators)
 }
 
 func createEventValidators() validation.Validator {

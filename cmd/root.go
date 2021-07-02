@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	cfgFile    string
-	eventsFile string
+	cfgFile         string
+	eventsFile      string
+	useRebootParser bool
 
 	RootCmd = &cobra.Command{
 		Use:   "cmd",
@@ -25,6 +26,7 @@ func init() {
 	cobra.OnInitialize(initializeConfig)
 	RootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./interpreter.yaml)")
 	RootCmd.PersistentFlags().StringVarP(&eventsFile, "events", "e", "", "json file containing list of events")
+	RootCmd.PersistentFlags().BoolVar(&useRebootParser, "reboot", false, "whether to use reboot parser or parse cycles based on boot-time")
 }
 
 func initializeConfig() {
