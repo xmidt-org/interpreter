@@ -54,6 +54,37 @@ func (p EventsParserFunc) Parse(events []interpreter.Event, currentEvent interpr
 	return p(events, currentEvent)
 }
 
+// DefaultCycleParser runs each event in the history through the comparator and returns the entire
+// history if no errors are found.
+func DefaultCycleParser(comparator Comparator) EventsParserFunc {
+	comparator = setComparator(comparator)
+	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
+		latestBootTime, err := currentEvent.BootTime()
+		if err != nil || latestBootTime <= 0 {
+			return []interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
+		}
+
+		var eventList []interpreter.Event
+		for _, event := range eventsHistory {
+			// If comparator returns true, it means we should stop parsing
+			// because there is something wrong with currentEvent
+			if bad, err := comparator.Compare(event, currentEvent); bad {
+				return []interpreter.Event{}, err
+			}
+
+			// make sure event is not the current event
+			if event.TransactionUUID != currentEvent.TransactionUUID {
+				eventList = append(eventList, event)
+			}
+		}
+
+		eventList = append(eventList, currentEvent)
+		sort.Slice(eventList, birthdateDescendingSortFunc(eventList))
+
+		return eventList, nil
+	}
+}
+
 // RebootParser returns an EventsParser that takes in a list of events and returns a sorted subset of that list
 // containing events that are relevant to the latest reboot. The slice starts with the last reboot-pending (if available) or last offline event
 // and includes all events afterwards that have a birthdate less than the first fully-manageable event (if available) or the first
@@ -190,7 +221,7 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 	return lastCycle, currentCycle, nil
 }
 
-// returns default comparator
+// returns default comparator if comparator is nil
 func setComparator(comparator Comparator) Comparator {
 	if comparator == nil {
 		comparator = DefaultComparator()
