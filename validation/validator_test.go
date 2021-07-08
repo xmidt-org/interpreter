@@ -10,6 +10,14 @@ import (
 	"github.com/xmidt-org/interpreter"
 )
 
+func TestDefaultValidator(t *testing.T) {
+	assert := assert.New(t)
+	validator := DefaultValidator()
+	valid, err := validator.Valid(interpreter.Event{})
+	assert.True(valid)
+	assert.Nil(err)
+}
+
 func TestValidators(t *testing.T) {
 	assert := assert.New(t)
 	testEvent := interpreter.Event{}
@@ -116,7 +124,7 @@ func TestBootTimeValidator(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			valid, err := validator(tc.event)
+			valid, err := validator.Valid(tc.event)
 			assert.Equal(tc.valid, valid)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
@@ -191,12 +199,101 @@ func TestBirthdateValidator(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			valid, err := validator(tc.event)
+			valid, err := validator.Valid(tc.event)
 			assert.Equal(tc.valid, valid)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {
 				assert.Contains(err.Error(), tc.expectedErr.Error())
+			}
+		})
+	}
+}
+
+func TestBirthdateAlignmentValidator(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+	testDuration := 60 * time.Second
+	tests := []struct {
+		description        string
+		event              interpreter.Event
+		expectedValid      bool
+		duration           time.Duration
+		expectedTimestamps []int64
+	}{
+		{
+			description: "valid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d", now.Add(5*time.Second).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			duration:      testDuration,
+			expectedValid: true,
+		},
+		{
+			description: "invalid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d", now.Add(5*time.Minute).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			expectedValid:      false,
+			duration:           testDuration,
+			expectedTimestamps: []int64{now.Add(5 * time.Minute).Unix()},
+		},
+		{
+			description: "multiple timestamps valid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d/%d/something/%d", now.Add(5*time.Second).Unix(), now.Add(2*time.Second).Unix(), now.Add(10*time.Second).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			duration:      testDuration,
+			expectedValid: true,
+		},
+		{
+			description: "valid with negative duration",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d/%d/something/%d", now.Add(5*time.Second).Unix(), now.Add(2*time.Second).Unix(), now.Add(10*time.Second).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			duration:      testDuration * -1,
+			expectedValid: true,
+		},
+		{
+			description: "multiple timestamps invalid",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d/%d/something/%d", now.Add(5*time.Minute).Unix(), now.Add(2*time.Minute).Unix(), now.Add(10*time.Second).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			duration:           testDuration,
+			expectedValid:      false,
+			expectedTimestamps: []int64{now.Add(5 * time.Minute).Unix(), now.Add(2 * time.Minute).Unix()},
+		},
+		{
+			description: "invalid with negative duration",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d/%d/something/%d", now.Add(5*time.Minute).Unix(), now.Add(2*time.Minute).Unix(), now.Add(10*time.Second).Unix()),
+				Birthdate:   now.UnixNano(),
+			},
+			duration:           testDuration,
+			expectedValid:      false,
+			expectedTimestamps: []int64{now.Add(5 * time.Minute).Unix(), now.Add(2 * time.Minute).Unix()},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			val := BirthdateAlignmentValidator(tc.duration)
+			valid, err := val.Valid(tc.event)
+			assert.Equal(tc.expectedValid, valid)
+			if tc.expectedValid {
+				assert.Nil(err)
+			} else {
+				var birthdateErr InvalidBirthdateErr
+				assert.True(errors.As(err, &birthdateErr))
+				assert.ElementsMatch(tc.expectedTimestamps, birthdateErr.Timestamps)
+				assert.Equal(tc.event.Destination, birthdateErr.Destination)
+				assert.Equal(MisalignedBirthdate, birthdateErr.Tag())
 			}
 		})
 	}
@@ -257,7 +354,7 @@ func TestDestinationValidator(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
 			validator := DestinationValidator(tc.searchedEventType)
-			valid, err := validator(tc.event)
+			valid, err := validator.Valid(tc.event)
 			assert.Equal(tc.valid, valid)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
@@ -269,7 +366,7 @@ func TestDestinationValidator(t *testing.T) {
 
 }
 
-func TestDeviceIDValidator(t *testing.T) {
+func TestConsistentDeviceIDValidator(t *testing.T) {
 	val := ConsistentDeviceIDValidator()
 	tests := []struct {
 		description        string
@@ -360,7 +457,7 @@ func TestDeviceIDValidator(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			pass, err := val(tc.event)
+			pass, err := val.Valid(tc.event)
 			assert.Equal(tc.expectedConsistent, pass)
 			if !tc.expectedConsistent {
 				var e InconsistentIDErr
@@ -374,7 +471,7 @@ func TestDeviceIDValidator(t *testing.T) {
 	}
 }
 
-func TestDestinationTimestampValidator(t *testing.T) {
+func TestBootDurationValidator(t *testing.T) {
 	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
 	assert.Nil(t, err)
 	tests := []struct {
@@ -408,6 +505,17 @@ func TestDestinationTimestampValidator(t *testing.T) {
 			valid:    true,
 		},
 		{
+			description: "valid with negative duration",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/serial:112233445566/%d/something-something/%d/%d", now.Add(2*time.Minute).Unix(), now.Add(3*time.Minute).Unix(), now.Add(time.Minute).Unix()),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration: -10 * time.Second,
+			valid:    true,
+		},
+		{
 			description: "valid with no timestamps",
 			event: interpreter.Event{
 				Destination: "event:device-status/serial:112233445566/",
@@ -437,6 +545,19 @@ func TestDestinationTimestampValidator(t *testing.T) {
 				},
 			},
 			duration:    10 * time.Second,
+			valid:       false,
+			expectedErr: BootDurationErr{OriginalErr: ErrFastBoot, ErrorTag: FastBoot},
+			expectedTag: FastBoot,
+		},
+		{
+			description: "invalid with negative duration",
+			event: interpreter.Event{
+				Destination: fmt.Sprintf("event:device-status/serial:112233445566/%d", now.Add(5*time.Second).Unix()),
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			duration:    -10 * time.Second,
 			valid:       false,
 			expectedErr: BootDurationErr{OriginalErr: ErrFastBoot, ErrorTag: FastBoot},
 			expectedTag: FastBoot,
@@ -480,7 +601,7 @@ func TestDestinationTimestampValidator(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
 			val := BootDurationValidator(tc.duration)
-			valid, err := val(tc.event)
+			valid, err := val.Valid(tc.event)
 			assert.Equal(tc.valid, valid)
 			if tc.expectedErr != nil {
 				var taggedError TaggedError
@@ -492,72 +613,7 @@ func TestDestinationTimestampValidator(t *testing.T) {
 	}
 }
 
-func TestBirthdateAlignmentValidator(t *testing.T) {
-	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
-	assert.Nil(t, err)
-	testDuration := 60 * time.Second
-	val := BirthdateAlignmentValidator(testDuration)
-	tests := []struct {
-		description        string
-		event              interpreter.Event
-		expectedValid      bool
-		expectedTimestamps []int64
-	}{
-		{
-			description: "valid",
-			event: interpreter.Event{
-				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d", now.Add(5*time.Second).Unix()),
-				Birthdate:   now.UnixNano(),
-			},
-			expectedValid: true,
-		},
-		{
-			description: "invalid",
-			event: interpreter.Event{
-				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d", now.Add(5*time.Minute).Unix()),
-				Birthdate:   now.UnixNano(),
-			},
-			expectedValid:      false,
-			expectedTimestamps: []int64{now.Add(5 * time.Minute).Unix()},
-		},
-		{
-			description: "multiple timestamps valid",
-			event: interpreter.Event{
-				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d/%d/something/%d", now.Add(5*time.Second).Unix(), now.Add(2*time.Second).Unix(), now.Add(10*time.Second).Unix()),
-				Birthdate:   now.UnixNano(),
-			},
-			expectedValid: true,
-		},
-		{
-			description: "multiple timestamps invalid",
-			event: interpreter.Event{
-				Destination: fmt.Sprintf("event:device-status/mac:112233445566/%d/%d/something/%d", now.Add(5*time.Minute).Unix(), now.Add(2*time.Minute).Unix(), now.Add(10*time.Second).Unix()),
-				Birthdate:   now.UnixNano(),
-			},
-			expectedValid:      false,
-			expectedTimestamps: []int64{now.Add(5 * time.Minute).Unix(), now.Add(2 * time.Minute).Unix()},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.description, func(t *testing.T) {
-			assert := assert.New(t)
-			valid, err := val(tc.event)
-			assert.Equal(tc.expectedValid, valid)
-			if tc.expectedValid {
-				assert.Nil(err)
-			} else {
-				var birthdateErr InvalidBirthdateErr
-				assert.True(errors.As(err, &birthdateErr))
-				assert.ElementsMatch(tc.expectedTimestamps, birthdateErr.Timestamps)
-				assert.Equal(tc.event.Destination, birthdateErr.Destination)
-				assert.Equal(MisalignedBirthdate, birthdateErr.Tag())
-			}
-		})
-	}
-}
-
-func TestEventTypesValidator(t *testing.T) {
+func TestEventTypeValidator(t *testing.T) {
 	val := EventTypeValidator([]string{"online", "online", "offline"})
 	tests := []struct {
 		description   string
