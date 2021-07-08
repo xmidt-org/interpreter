@@ -228,6 +228,14 @@ func (suite *CycleTestSuite) TestParsersValid() {
 		parseFunc     func(interpreter.Event) bool
 	}{
 		{
+			description:   "default cycle parser",
+			parser:        DefaultCycleParser(mockComparator),
+			startingEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", olderBootTime.Unix(), 1)},
+			endingEvent:   eventToChange{eventID: fmt.Sprintf("%d-%d", futureBootTime.Unix(), 2)},
+			currentEvent:  eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
+			parseFunc:     func(e interpreter.Event) bool { return true },
+		},
+		{
 			description:   "last cycle parser",
 			parser:        LastCycleParser(mockComparator),
 			startingEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", prevBootTime.Unix(), 1)},
@@ -383,6 +391,7 @@ func (suite *CycleTestSuite) TestInvalidComparator() {
 	mockComparator.On("Compare", mock.Anything, mock.Anything).Return(true, testErr)
 	toEvent := suite.setEventDestination(fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2), "event-device-status/mac:112233445566/some-event")
 	parsers := []EventsParserFunc{
+		DefaultCycleParser(mockComparator),
 		RebootParser(mockComparator),
 		RebootToCurrentParser(mockComparator),
 		LastCycleParser(mockComparator),
@@ -432,6 +441,7 @@ func (suite *CycleTestSuite) TestCurrentEventInvalidBootTime() {
 
 	mockComparator := new(mockComparator)
 	parsers := []EventsParserFunc{
+		DefaultCycleParser(mockComparator),
 		CurrentCycleParser(mockComparator),
 		RebootParser(mockComparator),
 		RebootToCurrentParser(mockComparator),
