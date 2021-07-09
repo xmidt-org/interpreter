@@ -8,6 +8,9 @@
 # Ignore example binaries
 tools/eventsGenerator/eventsGenerator
 cmd/eventsParser/eventsParser
+cmd/cycleValidators/cycleValidators
+cmd/parseAndValidate/parseAndValidate
+cmd/interpreter
 
 
 # Test binary, build with `go test -c`

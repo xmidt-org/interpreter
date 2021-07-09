@@ -322,7 +322,7 @@ func findSessionsWithoutEvent(eventsMap map[string]bool, eventsList []interprete
 func determineMetadataValues(fields []string, event interpreter.Event) map[string]string {
 	values := make(map[string]string)
 	for _, field := range fields {
-		values[field] = event.Metadata[field]
+		values[field], _ = event.GetMetadataValue(field)
 	}
 
 	return values
@@ -398,7 +398,7 @@ func validateMetadataWithinCycle(keys []string, events []interpreter.Event) []st
 // compare an event's metadata values with the values it is supposed to have
 func checkMetadataValues(expectedMetadataVals map[string]string, incorrectMetadata map[string]bool, event interpreter.Event) map[string]bool {
 	for key, val := range expectedMetadataVals {
-		if event.Metadata[key] != val {
+		if eventVal, _ := event.GetMetadataValue(key); eventVal != val {
 			incorrectMetadata[key] = true
 		}
 	}

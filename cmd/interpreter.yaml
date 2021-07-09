@@ -1,0 +1,37 @@
+codex:
+  address: "http://localhost:7000"
+  maxRetryCount: 3
+  jwt:
+    authURL: ""
+    timeout: "1m"
+    buffer: "5s"
+  basic: "Basic YXV0aEhlYWRlcjp0ZXN0"
+validators:
+  minBootDuration: "10s"
+  birthdateAlignmentDuration: "1h"
+  bootTimeValidator:
+    validFrom: "-8766h"
+    validTo: "1h"
+    minValidYear: 2015
+  birthdateValidator:
+    validFrom: "-8766h"
+    validTo: "1h"
+    minValidYear: 2015
+  validEventTypes:
+    - "reboot-pending"
+    - "offline"
+    - "online"
+    - "operational"
+    - "fully-manageable"
+  metadataValidators:
+    - key: "hw-mac"
+    - key: "hw-manufacturer"
+    - key: "hw-model"
+    - key: "hw-serial-number"
+    - key: "partner-id"
+    - key: "fw-name"
+      checkWithinCycle: true
+    - key: "hw-last-reboot-reason"
+      checkWithinCycle: true
+    - key: "webpa-protocol"
+      checkWithinCycle: true
