@@ -79,9 +79,9 @@ func getEvents(eventsCallback func([]interpreter.Event)) {
 	}
 }
 
-func readFile(fileName string) ([]interpreter.Event, error) {
+func readFile(filePath string) ([]interpreter.Event, error) {
 	var events []interpreter.Event
-	data, err := ioutil.ReadFile(fileName)
+	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return events, fmt.Errorf("unable to read from file: %v", err)
 	}
