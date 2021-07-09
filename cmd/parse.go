@@ -51,6 +51,7 @@ type bootCycle struct {
 }
 
 func init() {
+	parseCmd.PersistentFlags().BoolVarP(&useRebootParser, "reboot", "r", false, "parse just reboot events")
 	rootCmd.AddCommand(parseCmd)
 	getEventsCmd.AddCommand(parseCmd)
 }
@@ -63,7 +64,7 @@ func parse(events []interpreter.Event) {
 func printBootCycles(cycles []bootCycle) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeader([]string{"Cycle ID", "Boot-time", "Birthdate", "Destination", "ID"})
+	table.SetHeader([]string{"Cycle ID", "Boot-time", "Birthdate", "Destination", "Event ID"})
 	data := make([][]string, 0, len(cycles))
 	for _, cycle := range cycles {
 		cycleInfo := getCycleInfo(cycle)
@@ -97,6 +98,26 @@ func parseIntoCycles(events []interpreter.Event) []bootCycle {
 		if boottime, err := event.BootTime(); err == nil && !seenBootTimes[boottime] {
 			seenBootTimes[boottime] = true
 			parsedEvents, err := parser.Parse(events, event)
+			cycles = append(cycles, bootCycle{
+				ID:     strconv.Itoa(index),
+				Events: parsedEvents,
+				Err:    err,
+			})
+			index++
+		}
+	}
+
+	return cycles
+}
+
+func parseByParser(events []interpreter.Event, cycleParser history.EventsParserFunc) []bootCycle {
+	index := 0
+	var cycles []bootCycle
+	seenBootTimes := make(map[int64]bool)
+	for _, event := range events {
+		if boottime, err := event.BootTime(); err == nil && !seenBootTimes[boottime] {
+			seenBootTimes[boottime] = true
+			parsedEvents, err := cycleParser.Parse(events, event)
 			cycles = append(cycles, bootCycle{
 				ID:     strconv.Itoa(index),
 				Events: parsedEvents,

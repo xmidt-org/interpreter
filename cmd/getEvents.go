@@ -30,6 +30,8 @@ import (
 	"github.com/xmidt-org/interpreter"
 )
 
+const prompt = "Input device id: "
+
 var getEventsCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Gets and prints list of events",
@@ -39,6 +41,7 @@ var getEventsCmd = &cobra.Command{
 }
 
 func init() {
+	getEventsCmd.PersistentFlags().StringVarP(&eventsFile, "events", "e", "", "json file containing list of events; if not given, it will default to querying codex")
 	rootCmd.AddCommand(getEventsCmd)
 }
 
@@ -58,12 +61,14 @@ func getEvents(eventsCallback func([]interpreter.Event)) {
 		auth, _ := createCodexAuth(config)
 		client := createClient(config, auth)
 		scanner := bufio.NewScanner(os.Stdin)
+		fmt.Print(prompt)
 		for scanner.Scan() {
 			id := scanner.Text()
 			if len(id) > 0 {
 				events := client.getEvents(id)
 				eventsCallback(events)
 			}
+			fmt.Print(prompt)
 		}
 
 		if err := scanner.Err(); err != nil {
@@ -76,7 +81,7 @@ func getEvents(eventsCallback func([]interpreter.Event)) {
 
 func readFile(fileName string) ([]interpreter.Event, error) {
 	var events []interpreter.Event
-	data, err := ioutil.ReadFile(fmt.Sprintf("./%s", fileName))
+	data, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return events, fmt.Errorf("unable to read from file: %v", err)
 	}
@@ -91,7 +96,7 @@ func readFile(fileName string) ([]interpreter.Event, error) {
 func printEvents(events []interpreter.Event) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeader([]string{"ID", "Boot-time", "Birthdate", "Destination"})
+	table.SetHeader([]string{"Event ID", "Boot-time", "Birthdate", "Destination"})
 	data := make([][]string, 0, len(events))
 	for _, event := range events {
 		data = append(data, getEventInfo(event))

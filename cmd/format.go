@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	timeFormat = "Jan 2 15:04:05.00000"
+	timeFormat = "Jan 2 2006 15:04:05.00000"
 )
 
 func getBoottimeString(event interpreter.Event) string {

@@ -18,6 +18,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -33,6 +34,7 @@ import (
 var (
 	eventValidator  validation.Validator
 	cycleValidators history.CycleValidator
+	cycleParser     history.EventsParserFunc
 )
 
 var validateCmd = &cobra.Command{
@@ -40,8 +42,12 @@ var validateCmd = &cobra.Command{
 	Short: "validate a list of cycles and events and print",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		eventValidator, cycleValidators = createValidators()
+		cycleParser = history.CurrentCycleParser(nil)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		if useRebootParser {
+			fmt.Println("Unable to run validation on just reboot events. Parsing by boot-time instead.")
+		}
 		getEvents(validate)
 	},
 }
@@ -79,7 +85,7 @@ func init() {
 }
 
 func validate(events []interpreter.Event) {
-	cycles := parseIntoCycles(events)
+	cycles := parseByParser(events, cycleParser)
 	var allErrors []eventErrs
 	for _, cycle := range cycles {
 		_, cycleErrs := cycleValidators.Valid(cycle.Events)
@@ -100,7 +106,7 @@ func validate(events []interpreter.Event) {
 func printValidationTable(info []eventErrs) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeader([]string{"Cycle", "ID", "Boot-time", "Destination", "Event Errors", "Cycle Errors"})
+	table.SetHeader([]string{"Cycle", "Event ID", "Boot-time", "Destination", "Event Errors", "Cycle Errors"})
 	data := make([][]string, 0, len(info))
 	for _, eventErr := range info {
 		data = append(data, getValidationRowInfo(eventErr))

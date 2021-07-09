@@ -23,7 +23,7 @@
         "msg_type": 4,
         "source": "mac:112233445566",
         "dest": "event:device-status/mac:112233445566/fully-manageable/1620770757",
-        "transaction_uuid": "1",
+        "transaction_uuid": "2",
         "metadata": {
             "/boot-time": "1623343111",
             "fw-name": "fw-",
@@ -43,7 +43,7 @@
         "msg_type": 4,
         "source": "mac:112233445566",
         "dest": "event:device-status/mac:112233445566/operational",
-        "transaction_uuid": "2",
+        "transaction_uuid": "1",
         "metadata": {
             "/boot-time": "1623343111",
             "fw-name": "fw-1",

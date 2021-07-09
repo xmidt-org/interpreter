@@ -38,8 +38,6 @@ var (
 func init() {
 	cobra.OnInitialize(initializeConfig)
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./interpreter.yaml)")
-	rootCmd.PersistentFlags().StringVarP(&eventsFile, "events", "e", "", "json file containing list of events")
-	rootCmd.PersistentFlags().BoolVarP(&useRebootParser, "reboot", "r", false, "parse just reboot events")
 }
 
 func initializeConfig() {
