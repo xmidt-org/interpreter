@@ -254,11 +254,13 @@ func (suite *CycleTestSuite) TestParsersValid() {
 			currentEvent:  eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
 		},
 		{
-			description:   "current cycle parser",
-			parser:        CurrentCycleParser(mockComparator),
-			startingEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 1)},
-			endingEvent:   eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
-			currentEvent:  eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
+			description:  "current cycle parser",
+			parser:       CurrentCycleParser(mockComparator),
+			currentEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
+			parseFunc: func(e interpreter.Event) bool {
+				boottime, _ := e.BootTime()
+				return boottime == currentBootTime.Unix()
+			},
 		},
 		{
 			description: "reboot parser-fully-manageable",

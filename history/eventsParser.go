@@ -163,7 +163,7 @@ func LastCycleToCurrentParser(comparator Comparator) EventsParserFunc {
 func CurrentCycleParser(comparator Comparator) EventsParserFunc {
 	comparator = setComparator(comparator)
 	return func(eventsHistory []interpreter.Event, currentEvent interpreter.Event) ([]interpreter.Event, error) {
-		_, currentCycle, err := parserHelper(eventsHistory, currentEvent, comparator)
+		currentCycle, err := getSameBootTimeEvents(eventsHistory, currentEvent, comparator)
 		if err != nil {
 			return []interpreter.Event{}, err
 		}
@@ -208,7 +208,7 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 		}
 
 		// make sure event is not the current event
-		if bootTime == latestBootTime && event.Birthdate < currentEvent.Birthdate && event.TransactionUUID != currentEvent.TransactionUUID {
+		if bootTime == latestBootTime && event.Birthdate <= currentEvent.Birthdate && !sameEvent(event, currentEvent) {
 			currentCycle = append(currentCycle, event)
 		}
 	}
@@ -219,6 +219,45 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 	sort.Slice(currentCycle, birthdateDescendingSortFunc(currentCycle))
 
 	return lastCycle, currentCycle, nil
+}
+
+// getSameBootTimeEvents returns a list of events with the same boot-time as the currentEvent, along with the currentEvent.
+// It also runs all of the events in the events list through the comparator, and if the comparator returns true,
+// getSameBootTimeEvents will stop and return an empty slice and the error returned by the comparator.
+// The slice is sorted from newest to oldest.
+func getSameBootTimeEvents(events []interpreter.Event, currentEvent interpreter.Event, comparator Comparator) ([]interpreter.Event, error) {
+	latestBootTime, err := currentEvent.BootTime()
+	if err != nil || latestBootTime <= 0 {
+		return []interpreter.Event{}, validation.InvalidBootTimeErr{OriginalErr: err}
+	}
+
+	var currentCycle []interpreter.Event
+	for _, event := range events {
+		bootTime, _ := event.BootTime()
+		if bootTime <= 0 {
+			continue
+		}
+
+		// If comparator returns true, it means we should stop parsing
+		// because there is something wrong with currentEvent
+		if bad, err := comparator.Compare(event, currentEvent); bad {
+			return []interpreter.Event{}, err
+		}
+
+		if bootTime == latestBootTime && !sameEvent(event, currentEvent) {
+			currentCycle = append(currentCycle, event)
+		}
+	}
+
+	currentCycle = append(currentCycle, currentEvent)
+	sort.Slice(currentCycle, birthdateDescendingSortFunc(currentCycle))
+	return currentCycle, nil
+}
+
+func sameEvent(eventA interpreter.Event, eventB interpreter.Event) bool {
+	bootTimeA, _ := eventA.BootTime()
+	bootTimeB, _ := eventB.BootTime()
+	return bootTimeA == bootTimeB && eventA.Birthdate == eventB.Birthdate && eventA.TransactionUUID == eventB.TransactionUUID
 }
 
 // returns default comparator if comparator is nil
