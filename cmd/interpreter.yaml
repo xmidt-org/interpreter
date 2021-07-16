@@ -23,7 +23,7 @@ validators:
     - "online"
     - "operational"
     - "fully-manageable"
-  metadataValidators:
+  metadata:
     - key: "hw-mac"
     - key: "hw-manufacturer"
     - key: "hw-model"
@@ -35,3 +35,7 @@ validators:
       checkWithinCycle: true
     - key: "webpa-protocol"
       checkWithinCycle: true
+  eventOrder:
+    - "fully-manageable"
+    - "operational"
+    - "online"

@@ -59,6 +59,7 @@ type ValidatorConfig struct {
 	ValidEventTypes            []string
 	BootTimeValidator          TimeValidationConfig
 	BirthdateValidator         TimeValidationConfig
+	EventOrder                 []string
 }
 
 type MetadataKeyConfig struct {
@@ -141,6 +142,7 @@ func createCycleValidators(config ValidatorConfig) history.CycleValidator {
 		history.TransactionUUIDValidator(),
 		history.SessionOnlineValidator(func(_ []interpreter.Event, _ string) bool { return false }),
 		history.SessionOfflineValidator(func(_ []interpreter.Event, _ string) bool { return false }),
+		history.EventOrderValidator(config.EventOrder),
 	}
 	var withinCycleChecks []string
 	var wholeCycleChecks []string

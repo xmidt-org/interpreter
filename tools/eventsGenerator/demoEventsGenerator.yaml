@@ -77,6 +77,21 @@ messageContents:
     birthdateOffset: "-4m"
   - event:
       source: "mac:112233445566"
+      destination: "event:device-status/mac:112233445566/reboot-pending"
+      sessionID: "3"
+      metadata:
+        - "hw-mac": "hw-mac-1"
+        - "hw-manufacturer": "manufacturer-1"
+        - "hw-model": "model-1"
+        - "hw-serial-number": "1"
+        - "partner-id": "partner-1"
+        - "fw-name": "fw-2"
+        - "hw-last-reboot-reason": "reboot-reason-2"
+        - "webpa-protocol": "protocol-2"
+    bootTimeOffset: "-30m"
+    birthdateOffset: "-5m"
+  - event:
+      source: "mac:112233445566"
       destination: "event:device-status/mac:112233445566/offline/mac:123456"
       sessionID: "3"
       metadata:
@@ -170,7 +185,7 @@ messageContents:
     birthdateOffset: "-16m"
   - event:
       source: "mac:112233445566"
-      destination: "event:device-status/mac:112233445566/oldBirthdateEvent"
+      destination: "event:device-status/mac:112233445566/invalidBirthdateEvent1"
       sessionID: "session1"
       transactionUUID: "123"
       metadata:
@@ -186,7 +201,7 @@ messageContents:
     birthdateOffset: "-9000h"
   - event:
       source: "mac:112233445566"
-      destination: "event:device-status/mac:112233445566/invalidBirthdateEvent"
+      destination: "event:device-status/mac:112233445566/online"
       sessionID: "0"
       transactionUUID: "123"
       metadata:
@@ -199,20 +214,4 @@ messageContents:
         - "hw-last-reboot-reason": "reboot-reason-3"
         - "webpa-protocol": "protocol-3"
     bootTimeOffset: "-35m"
-    birthdateOffset: "-8h"
-  - event:
-      source: "mac:112233445566"
-      destination: "event:device-status/mac:112233445566/invalidBirthdateEvent"
-      sessionID: "0"
-      transactionUUID: "123"
-      metadata:
-        - "hw-mac": "hw-mac-2"
-        - "hw-manufacturer": "manufacturer-1"
-        - "hw-model": "model-1"
-        - "hw-serial-number": "1"
-        - "partner-id": "partner-1"
-        - "fw-name": "fw-3"
-        - "hw-last-reboot-reason": "reboot-reason-3"
-        - "webpa-protocol": "protocol-3"
-    bootTimeOffset: "-40m"
     birthdateOffset: "-8h"

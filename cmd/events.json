@@ -5,7 +5,7 @@
         "dest": "event:device-status/mac:112233445566/offline",
         "transaction_uuid": "0",
         "metadata": {
-            "/boot-time": "1623343111",
+            "/boot-time": "1626321975",
             "fw-name": "fw-1",
             "hw-last-reboot-reason": "reboot-reason-1",
             "hw-mac": "hw-mac-1",
@@ -15,17 +15,17 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-1"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:48:31.849173-07:00\"}",
-        "birth_date": 1623343711849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:16:15.360841-07:00\"}",
+        "birth_date": 1626322575360841000,
         "sessionID": "4"
     },
     {
         "msg_type": 4,
         "source": "mac:112233445566",
         "dest": "event:device-status/mac:112233445566/fully-manageable/1620770757",
-        "transaction_uuid": "2",
+        "transaction_uuid": "1",
         "metadata": {
-            "/boot-time": "1623343111",
+            "/boot-time": "1626321975",
             "fw-name": "fw-",
             "hw-last-reboot-reason": "reboot-reason-1",
             "hw-mac": "hw-mac-1",
@@ -35,17 +35,17 @@
             "partner-id": "partner",
             "webpa-protocol": "protocol-1"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:47:31.849173-07:00\"}",
-        "birth_date": 1623343651849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:15:15.360841-07:00\"}",
+        "birth_date": 1626322515360841000,
         "sessionID": "4"
     },
     {
         "msg_type": 4,
         "source": "mac:112233445566",
         "dest": "event:device-status/mac:112233445566/operational",
-        "transaction_uuid": "1",
+        "transaction_uuid": "2",
         "metadata": {
-            "/boot-time": "1623343111",
+            "/boot-time": "1626321975",
             "fw-name": "fw-1",
             "hw-last-reboot-reason": "reboot-reason-1",
             "hw-mac": "hw-mac-1",
@@ -55,8 +55,8 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-1"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:46:31.849173-07:00\"}",
-        "birth_date": 1623343591849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:14:15.360841-07:00\"}",
+        "birth_date": 1626322455360841000,
         "sessionID": "4"
     },
     {
@@ -65,7 +65,7 @@
         "dest": "event:device-status/mac:112233445566/online",
         "transaction_uuid": "3",
         "metadata": {
-            "/boot-time": "1623343111",
+            "/boot-time": "1626321975",
             "fw-name": "fw-1",
             "hw-last-reboot-reason": "reboot-reason-1",
             "hw-mac": "hw-mac-1",
@@ -75,8 +75,8 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-1"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:45:31.849173-07:00\"}",
-        "birth_date": 1623343531849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:13:15.360841-07:00\"}",
+        "birth_date": 1626322395360841000,
         "sessionID": "4"
     },
     {
@@ -85,7 +85,7 @@
         "dest": "event:device-status/mac:112233445566/offline",
         "transaction_uuid": "4",
         "metadata": {
-            "/boot-time": "1623341911",
+            "/boot-time": "1626320775",
             "fw-name": "fw-2",
             "hw-last-reboot-reason": "reboot-reason-2",
             "hw-mac": "hw-mac-1",
@@ -95,17 +95,37 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-2"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:44:31.849173-07:00\"}",
-        "birth_date": 1623343471849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:12:15.360841-07:00\"}",
+        "birth_date": 1626322335360841000,
+        "sessionID": "3"
+    },
+    {
+        "msg_type": 4,
+        "source": "mac:112233445566",
+        "dest": "event:device-status/mac:112233445566/reboot-pending",
+        "transaction_uuid": "5",
+        "metadata": {
+            "/boot-time": "1626320775",
+            "fw-name": "fw-2",
+            "hw-last-reboot-reason": "reboot-reason-2",
+            "hw-mac": "hw-mac-1",
+            "hw-manufacturer": "manufacturer-1",
+            "hw-model": "model-1",
+            "hw-serial-number": "1",
+            "partner-id": "partner-1",
+            "webpa-protocol": "protocol-2"
+        },
+        "payload": "{\"ts\":\"2021-07-14T21:11:15.360841-07:00\"}",
+        "birth_date": 1626322275360841000,
         "sessionID": "3"
     },
     {
         "msg_type": 4,
         "source": "mac:112233445566",
         "dest": "event:device-status/mac:112233445566/offline/mac:123456",
-        "transaction_uuid": "5",
+        "transaction_uuid": "6",
         "metadata": {
-            "/boot-time": "1623341911",
+            "/boot-time": "1626320775",
             "fw-name": "fw-3",
             "hw-last-reboot-reason": "reboot-reason-2",
             "hw-mac": "hw-mac-1",
@@ -115,17 +135,17 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-2"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:43:31.849173-07:00\"}",
-        "birth_date": 1623343411849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:11:15.360841-07:00\"}",
+        "birth_date": 1626322275360841000,
         "sessionID": "3"
     },
     {
         "msg_type": 4,
         "source": "mac:112233445566",
         "dest": "event:device-status/mac:112233445566/online",
-        "transaction_uuid": "6",
+        "transaction_uuid": "7",
         "metadata": {
-            "/boot-time": "1623341911",
+            "/boot-time": "1626320775",
             "fw-name": "fw-3",
             "hw-last-reboot-reason": "reboot-reason-2",
             "hw-mac": "hw-mac-1",
@@ -135,17 +155,17 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-2"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:42:31.849173-07:00\"}",
-        "birth_date": 1623343351849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:10:15.360841-07:00\"}",
+        "birth_date": 1626322215360841000,
         "sessionID": "3"
     },
     {
         "msg_type": 4,
         "source": "mac:112233445566",
         "dest": "event:device-status/mac:112233445566/offline",
-        "transaction_uuid": "7",
+        "transaction_uuid": "8",
         "metadata": {
-            "/boot-time": "1590943711",
+            "/boot-time": "1593922575",
             "fw-name": "fw-3",
             "hw-last-reboot-reason": "reboot-reason-3",
             "hw-mac": "hw-mac-1",
@@ -155,8 +175,8 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-3"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:37:31.849173-07:00\"}",
-        "birth_date": 1623343051849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:05:15.360841-07:00\"}",
+        "birth_date": 1626321915360841000,
         "sessionID": "2"
     },
     {
@@ -165,7 +185,7 @@
         "dest": "event:device-status/mac:112233445566/some-event",
         "transaction_uuid": "8",
         "metadata": {
-            "/boot-time": "1590943711",
+            "/boot-time": "1593922575",
             "fw-name": "fw-3",
             "hw-last-reboot-reason": "reboot-reason-3",
             "hw-mac": "hw-mac-1",
@@ -175,8 +195,8 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-3"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:36:31.849173-07:00\"}",
-        "birth_date": 1623342991849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:04:15.360841-07:00\"}",
+        "birth_date": 1626321855360841000,
         "sessionID": "2"
     },
     {
@@ -185,7 +205,7 @@
         "dest": "event:device-status/mac:112233445566/offline",
         "transaction_uuid": "8",
         "metadata": {
-            "/boot-time": "1299343711",
+            "/boot-time": "1302322575",
             "fw-name": "fw-3",
             "hw-last-reboot-reason": "reboot-reason-3",
             "hw-mac": "hw-mac-1",
@@ -195,8 +215,8 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-3"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:33:31.849173-07:00\"}",
-        "birth_date": 1623342811849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:01:15.360841-07:00\"}",
+        "birth_date": 1626321675360841000,
         "sessionID": "1"
     },
     {
@@ -205,7 +225,7 @@
         "dest": "event:device-status/mac:112233445566/some-event",
         "transaction_uuid": "9",
         "metadata": {
-            "/boot-time": "1299340111",
+            "/boot-time": "1302318975",
             "fw-name": "fw-3",
             "hw-last-reboot-reason": "reboot-reason-3",
             "hw-mac": "hw-mac-1",
@@ -215,8 +235,48 @@
             "partner-id": "partner-1",
             "webpa-protocol": "protocol-3"
         },
-        "payload": "{\"ts\":\"2021-06-10T09:32:31.849173-07:00\"}",
-        "birth_date": 1623342751849173000,
+        "payload": "{\"ts\":\"2021-07-14T21:00:15.360841-07:00\"}",
+        "birth_date": 1626321615360841000,
         "sessionID": "0"
+    },
+    {
+        "msg_type": 4,
+        "source": "mac:112233445566",
+        "dest": "event:device-status/mac:112233445566/online",
+        "transaction_uuid": "123",
+        "metadata": {
+            "/boot-time": "1626320475",
+            "fw-name": "fw-3",
+            "hw-last-reboot-reason": "reboot-reason-3",
+            "hw-mac": "hw-mac-2",
+            "hw-manufacturer": "manufacturer-1",
+            "hw-model": "model-1",
+            "hw-serial-number": "1",
+            "partner-id": "partner-1",
+            "webpa-protocol": "protocol-3"
+        },
+        "payload": "{\"ts\":\"2021-07-14T13:16:15.360841-07:00\"}",
+        "birth_date": 1626293775360841000,
+        "sessionID": "0"
+    },
+    {
+        "msg_type": 4,
+        "source": "mac:112233445566",
+        "dest": "event:device-status/mac:112233445566/invalidBirthdateEvent1",
+        "transaction_uuid": "123",
+        "metadata": {
+            "/boot-time": "1626320475",
+            "fw-name": "fw-3",
+            "hw-last-reboot-reason": "reboot-reason-3",
+            "hw-mac": "hw-mac-1",
+            "hw-manufacturer": "manufacturer-1",
+            "hw-model": "model-1",
+            "hw-serial-number": "1",
+            "partner-id": "partner-1",
+            "webpa-protocol": "protocol-3"
+        },
+        "payload": "{\"ts\":\"2020-07-04T21:16:15.360841-07:00\"}",
+        "birth_date": 1593922575360841000,
+        "sessionID": "session1"
     }
 ]
