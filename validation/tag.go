@@ -153,3 +153,12 @@ func ParseTag(str string) Tag {
 
 	return Unknown
 }
+
+func TagsToStrings(tags []Tag) []string {
+	convertedTags := make([]string, len(tags))
+	for i, tag := range tags {
+		convertedTags[i] = tag.String()
+	}
+
+	return convertedTags
+}
