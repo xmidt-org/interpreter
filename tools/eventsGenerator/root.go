@@ -19,7 +19,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -27,20 +26,26 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/spf13/pflag"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/xmidt-org/arrange"
 	"github.com/xmidt-org/interpreter"
-	"go.uber.org/fx"
 )
 
-const (
-	applicationName = "eventsGenerator"
+var (
+	cfgFile         string
+	destinationFile string
+
+	rootCmd = &cobra.Command{
+		Use:   "eventsGenerator",
+		Short: "eventsGenerator generates a json containing a list of events from a yaml config file",
+		Run: func(cmd *cobra.Command, args []string) {
+			run()
+		},
+	}
 )
 
 type Config struct {
 	MessageContents []Message
-	FilePath        string
 }
 
 type Message struct {
@@ -50,10 +55,34 @@ type Message struct {
 	BirthdateOffset time.Duration
 }
 
-func generateEvents(config Config) []interpreter.Event {
+func init() {
+	cobra.OnInitialize(initializePaths)
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./eventsGenerator.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&destinationFile, "destination", "d", "", "destination for resulting json that contains list of events (default is ./events.json)")
+}
+
+func initializePaths() {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		viper.AddConfigPath(".")
+		viper.SetConfigName("eventsGenerator")
+	}
+
+	if len(destinationFile) == 0 {
+		destinationFile = "./events.json"
+	}
+
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+}
+
+func generateEvents(messages []Message) []interpreter.Event {
 	now := time.Now()
-	events := make([]interpreter.Event, 0, len(config.MessageContents))
-	for i, msg := range config.MessageContents {
+	events := make([]interpreter.Event, 0, len(messages))
+	for i, msg := range messages {
 		if len(msg.Event.TransactionUUID) == 0 {
 			msg.Event.TransactionUUID = strconv.Itoa(i)
 		}
@@ -92,58 +121,25 @@ func createEvent(current time.Time, msg Message) interpreter.Event {
 	return event
 }
 
-func writeEvents(filePath string, events []interpreter.Event) {
+func writeEvents(events []interpreter.Event) error {
 	if data, err := json.Marshal(events); err == nil {
-		writeErr := ioutil.WriteFile(filePath, data, 0644) // nolint:gosec
+		writeErr := ioutil.WriteFile(destinationFile, data, 0644) // nolint:gosec
 		if writeErr != nil {
-			panic(writeErr)
+			return writeErr
 		}
 	}
+
+	return nil
 }
 
-func main() {
-	var configFile string
-	if len(os.Args) > 1 {
-		configFile = os.Args[1]
-	} else {
-		configFile = fmt.Sprintf("./%s.yaml", applicationName)
-	}
-
-	v := viper.New()
-	v.SetConfigFile(configFile)
-	err := v.ReadInConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read in viper config: %v\n", err.Error())
-		os.Exit(1)
-	}
-
-	app := fx.New(
-		arrange.ForViper(v),
-		arrange.Provide(Config{}),
-		fx.Provide(
-			generateEvents,
-		),
-		fx.Invoke(
-			func(config Config, events []interpreter.Event) {
-				var filePath string
-				if len(os.Args) > 2 {
-					filePath = os.Args[2]
-				} else {
-					filePath = config.FilePath
-				}
-
-				writeEvents(filePath, events)
-				os.Exit(0)
-			},
-		),
-	)
-
-	if err := app.Err(); err == nil {
-		app.Run()
-	} else if errors.Is(err, pflag.ErrHelp) {
-		return
+func run() {
+	var messages []Message
+	viper.UnmarshalKey("messageContents", &messages)
+	events := generateEvents(messages)
+	if err := writeEvents(events); err == nil {
+		os.Exit(0)
 	} else {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		os.Exit(1)
 	}
 }
