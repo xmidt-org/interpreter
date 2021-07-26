@@ -15,6 +15,7 @@ func TestString(t *testing.T) {
 	var nonExistentTag Tag = 1000
 	assert.Equal(t, "unknown", nonExistentTag.String())
 }
+
 func TestParseTag(t *testing.T) {
 	tests := []struct {
 		testStr     string
@@ -43,6 +44,42 @@ func TestParseTag(t *testing.T) {
 			assert := assert.New(t)
 			tag := ParseTag(tc.testStr)
 			assert.Equal(tc.expectedTag, tag)
+		})
+	}
+}
+
+func TestTagsToStrings(t *testing.T) {
+	tests := []struct {
+		description     string
+		tags            []Tag
+		expectedStrings []string
+	}{
+		{
+			description:     "multiple tags",
+			tags:            []Tag{RepeatedTransactionUUID, Unknown, DuplicateEvent, Tag(2000)},
+			expectedStrings: []string{RepeatedTransactionUUIDStr, UnknownStr, DuplicateEventStr, UnknownStr},
+		},
+		{
+			description:     "one tag",
+			tags:            []Tag{RepeatedTransactionUUID},
+			expectedStrings: []string{RepeatedTransactionUUIDStr},
+		},
+		{
+			description:     "empty list",
+			tags:            []Tag{},
+			expectedStrings: []string{},
+		},
+		{
+			description:     "nil list",
+			expectedStrings: []string{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			str := TagsToStrings(tc.tags)
+			assert.ElementsMatch(tc.expectedStrings, str)
 		})
 	}
 }

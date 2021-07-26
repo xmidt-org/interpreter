@@ -254,11 +254,13 @@ func (suite *CycleTestSuite) TestParsersValid() {
 			currentEvent:  eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
 		},
 		{
-			description:   "current cycle parser",
-			parser:        CurrentCycleParser(mockComparator),
-			startingEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 1)},
-			endingEvent:   eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
-			currentEvent:  eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
+			description:  "current cycle parser",
+			parser:       CurrentCycleParser(mockComparator),
+			currentEvent: eventToChange{eventID: fmt.Sprintf("%d-%d", currentBootTime.Unix(), 2)},
+			parseFunc: func(e interpreter.Event) bool {
+				boottime, _ := e.BootTime()
+				return boottime == currentBootTime.Unix()
+			},
 		},
 		{
 			description: "reboot parser-fully-manageable",
@@ -683,6 +685,202 @@ func TestRebootEndParser(t *testing.T) {
 			for _, event := range cycle {
 				assert.True(tc.expectedEventIDs[event.TransactionUUID])
 			}
+		})
+	}
+}
+
+func TestGetSameBootTimeEvents(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+	testErr := errors.New("test")
+	events := []interpreter.Event{
+		interpreter.Event{
+			Metadata: map[string]string{
+				interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+			},
+			TransactionUUID: "1",
+		},
+		interpreter.Event{
+			Metadata: map[string]string{
+				interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+			},
+			TransactionUUID: "2",
+		},
+		interpreter.Event{
+			Metadata: map[string]string{
+				interpreter.BootTimeKey: fmt.Sprint(now.Add(time.Minute).Unix()),
+			},
+			TransactionUUID: "4",
+		},
+		interpreter.Event{
+			Metadata: map[string]string{
+				interpreter.BootTimeKey: fmt.Sprint(now.Add(3 * time.Minute).Unix()),
+			},
+			TransactionUUID: "5",
+		},
+		interpreter.Event{
+			Metadata: map[string]string{
+				interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+			},
+			TransactionUUID: "3",
+		},
+		interpreter.Event{
+			Metadata: map[string]string{
+				interpreter.BootTimeKey: fmt.Sprint(now.Add(-1 * time.Minute).Unix()),
+			},
+			TransactionUUID: "6",
+		},
+	}
+
+	invalidComparator := new(mockComparator)
+	validComparator := new(mockComparator)
+	invalidComparator.On("Compare", mock.Anything, mock.Anything).Return(true, testErr)
+	validComparator.On("Compare", mock.Anything, mock.Anything).Return(false, nil)
+
+	tests := []struct {
+		description string
+		event       interpreter.Event
+		comparator  Comparator
+		expectedErr error
+	}{
+		{
+			description: "no current boot-time",
+			event:       interpreter.Event{},
+			expectedErr: interpreter.ErrBootTimeNotFound,
+			comparator:  validComparator,
+		},
+		{
+			description: "success",
+			event: interpreter.Event{
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			comparator: validComparator,
+		},
+		{
+			description: "invalid comparator",
+			event: interpreter.Event{
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+			},
+			comparator:  invalidComparator,
+			expectedErr: testErr,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+
+			currentBootTime, _ := tc.event.BootTime()
+			var expectedEvents []interpreter.Event
+			expectedEvents = append(expectedEvents, tc.event)
+			for _, event := range events {
+				eventBootTime, _ := event.BootTime()
+				if currentBootTime == eventBootTime {
+					expectedEvents = append(expectedEvents, event)
+				}
+			}
+
+			results, err := getSameBootTimeEvents(events, tc.event, tc.comparator)
+
+			if tc.expectedErr == nil {
+				assert.ElementsMatch(expectedEvents, results)
+				assert.Equal(tc.expectedErr, err)
+			} else {
+				assert.True(errors.Is(err, tc.expectedErr))
+			}
+		})
+	}
+}
+func TestSameEvent(t *testing.T) {
+	now, err := time.Parse(time.RFC3339Nano, "2021-03-02T18:00:01Z")
+	assert.Nil(t, err)
+	tests := []struct {
+		description string
+		eventA      interpreter.Event
+		eventB      interpreter.Event
+		sameEvent   bool
+	}{
+		{
+			description: "same event",
+			eventA: interpreter.Event{
+				TransactionUUID: "123",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				Birthdate: now.UnixNano(),
+			},
+			eventB: interpreter.Event{
+				TransactionUUID: "123",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				Birthdate: now.UnixNano(),
+			},
+			sameEvent: true,
+		},
+		{
+			description: "different uuid",
+			eventA: interpreter.Event{
+				TransactionUUID: "123",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				Birthdate: now.UnixNano(),
+			},
+			eventB: interpreter.Event{
+				TransactionUUID: "abc",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				Birthdate: now.UnixNano(),
+			},
+			sameEvent: false,
+		},
+		{
+			description: "different boot-times",
+			eventA: interpreter.Event{
+				TransactionUUID: "123",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				Birthdate: now.UnixNano(),
+			},
+			eventB: interpreter.Event{
+				TransactionUUID: "123",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Add(time.Minute).Unix()),
+				},
+				Birthdate: now.UnixNano(),
+			},
+			sameEvent: false,
+		},
+		{
+			description: "different birthdates",
+			eventA: interpreter.Event{
+				TransactionUUID: "123",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				Birthdate: now.UnixNano(),
+			},
+			eventB: interpreter.Event{
+				TransactionUUID: "123",
+				Metadata: map[string]string{
+					interpreter.BootTimeKey: fmt.Sprint(now.Unix()),
+				},
+				Birthdate: now.Add(time.Minute).UnixNano(),
+			},
+			sameEvent: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert.Equal(t, tc.sameEvent, sameEvent(tc.eventA, tc.eventB))
 		})
 	}
 }
