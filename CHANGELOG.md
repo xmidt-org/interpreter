@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.0.6]
+- Add current cycle event parser and better event comparison. [#37](https://github.com/xmidt-org/interpreter/pull/37)
+
 ## [v0.0.5]
 - Add last cycle and last cycle to current event parsers. [#32](https://github.com/xmidt-org/interpreter/pull/32)
 - Add cycle validators to validate the order of events and that the latest online event is the result of a true reboot. [#33](https://github.com/xmidt-org/interpreter/pull/33)
@@ -30,7 +33,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [v0.0.1]
 - Initial creation
 
-[Unreleased]: https://github.com/xmidt-org/interpreter/compare/v0.0.5..HEAD
+[Unreleased]: https://github.com/xmidt-org/interpreter/compare/v0.0.6..HEAD
+[v0.0.6]: https://github.com/xmidt-org/interpreter/compare/v0.0.5...v0.0.6
 [v0.0.5]: https://github.com/xmidt-org/interpreter/compare/v0.0.4...v0.0.5
 [v0.0.4]: https://github.com/xmidt-org/interpreter/compare/v0.0.3...v0.0.4
 [v0.0.3]: https://github.com/xmidt-org/interpreter/compare/v0.0.2...v0.0.3
