@@ -224,7 +224,7 @@ func parserHelper(events []interpreter.Event, currentEvent interpreter.Event, co
 // getSameBootTimeEvents returns a list of events with the same boot-time as the currentEvent, along with the currentEvent.
 // It also runs all of the events in the events list through the comparator, and if the comparator returns true,
 // getSameBootTimeEvents will stop and return an empty slice and the error returned by the comparator.
-// The slice is sorted from newest to oldest.
+// The slice is sorted from newest to oldest by birthdate.
 func getSameBootTimeEvents(events []interpreter.Event, currentEvent interpreter.Event, comparator Comparator) ([]interpreter.Event, error) {
 	latestBootTime, err := currentEvent.BootTime()
 	if err != nil || latestBootTime <= 0 {
