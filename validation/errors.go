@@ -49,6 +49,14 @@ type Errors []error
 // Error concatenates the list of error strings to provide a single string
 // that can be used to represent the errors that occurred.
 func (e Errors) Error() string {
+	if len(e) == 0 {
+		return ""
+	}
+
+	if len(e) == 1 {
+		return e[0].Error()
+	}
+
 	var output strings.Builder
 	output.Write([]byte("multiple errors: ["))
 	for i, msg := range e {

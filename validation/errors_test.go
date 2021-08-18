@@ -70,8 +70,23 @@ func TestErrors(t *testing.T) {
 			}
 		})
 	}
-
 }
+
+func TestError(t *testing.T) {
+	assert := assert.New(t)
+	err1 := errors.New("test err 1")
+	err2 := errors.New("test err 2")
+
+	err := make(Errors, 0)
+	assert.Empty(err.Error())
+
+	err = Errors([]error{err1, err2})
+	assert.Contains(err.Error(), err1.Error(), err2.Error())
+
+	err = Errors([]error{err1})
+	assert.Equal(err1.Error(), err.Error())
+}
+
 func TestInvalidEventErr(t *testing.T) {
 	testErr := testTaggedErrors{
 		err: errors.New("test error"),
