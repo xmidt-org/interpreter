@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.0.7]
 - modify error string for `Errors`. [#40](https://github.com/xmidt-org/interpreter/pull/40)
 
 ## [v0.0.6]
@@ -34,7 +36,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [v0.0.1]
 - Initial creation
 
-[Unreleased]: https://github.com/xmidt-org/interpreter/compare/v0.0.6..HEAD
+[Unreleased]: https://github.com/xmidt-org/interpreter/compare/v0.0.7..HEAD
+[v0.0.6]: https://github.com/xmidt-org/interpreter/compare/v0.0.6...v0.0.7
 [v0.0.6]: https://github.com/xmidt-org/interpreter/compare/v0.0.5...v0.0.6
 [v0.0.5]: https://github.com/xmidt-org/interpreter/compare/v0.0.4...v0.0.5
 [v0.0.4]: https://github.com/xmidt-org/interpreter/compare/v0.0.3...v0.0.4
