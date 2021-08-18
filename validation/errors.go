@@ -50,7 +50,7 @@ type Errors []error
 // that can be used to represent the errors that occurred.
 func (e Errors) Error() string {
 	if len(e) == 0 {
-		return ""
+		return "unknown or no errors"
 	}
 
 	if len(e) == 1 {

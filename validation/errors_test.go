@@ -78,7 +78,7 @@ func TestError(t *testing.T) {
 	err2 := errors.New("test err 2")
 
 	err := make(Errors, 0)
-	assert.Empty(err.Error())
+	assert.Equal("unknown or no errors", err.Error())
 
 	err = Errors([]error{err1, err2})
 	assert.Contains(err.Error(), err1.Error(), err2.Error())
