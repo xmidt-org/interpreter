@@ -21,7 +21,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/olekukonko/tablewriter"
@@ -81,7 +80,7 @@ func getEvents(eventsCallback func([]interpreter.Event)) {
 
 func readFile(filePath string) ([]interpreter.Event, error) {
 	var events []interpreter.Event
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return events, fmt.Errorf("unable to read from file: %v", err)
 	}
