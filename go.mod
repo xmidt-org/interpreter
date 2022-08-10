@@ -12,7 +12,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.8.0
 	github.com/xmidt-org/bascule v0.10.2
 	github.com/xmidt-org/httpaux v0.3.2
 	github.com/xmidt-org/wrp-go/v3 v3.0.2
