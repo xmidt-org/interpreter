@@ -18,5 +18,5 @@ on:
 
 jobs:
   ci:
-    uses: xmidt-org/.github/.github/workflows/go-ci.yml@0b661147e8cee82b9bc8ee123117cc551b45a672
+    uses: xmidt-org/.github/.github/workflows/go-ci.yml@d5b388fca0cae8a1ad4505c38451d7764af00dfd
     secrets: inherit
