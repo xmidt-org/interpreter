@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.1
 	github.com/xmidt-org/bascule v0.11.0
