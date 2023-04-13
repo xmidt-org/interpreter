@@ -6,10 +6,10 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/xmidt-org/bascule v0.11.4
 	github.com/xmidt-org/httpaux v0.3.2
-	github.com/xmidt-org/wrp-go/v3 v3.1.4
+	github.com/xmidt-org/wrp-go/v3 v3.1.6
 )
 
 require (
@@ -30,9 +30,8 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	github.com/ugorji/go/codec v1.2.7 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.9.0 // indirect
+	github.com/ugorji/go/codec v1.2.11 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
