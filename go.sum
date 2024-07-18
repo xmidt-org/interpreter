@@ -64,8 +64,8 @@ github.com/ugorji/go/codec v1.2.11 h1:BMaWp1Bb6fHwEtbplGBGJ498wD+LKlNSl25MjdZY4d
 github.com/ugorji/go/codec v1.2.11/go.mod h1:UNopzCgEMSXjBc6AOMqYvWC1ktqTAfzJZUZgYf6w6lg=
 github.com/xmidt-org/bascule v0.11.4 h1:s5ADr3lhMiXc2GCMmsIRSnGT2yopVJjoHPjhpzL9YzE=
 github.com/xmidt-org/bascule v0.11.4/go.mod h1:/MKKhwnktnYeQXFChuYqdE81od+BWbdS/qJPJP7APgo=
-github.com/xmidt-org/httpaux v0.4.0 h1:cAL/MzIBpSsv4xZZeq/Eu1J5M3vfNe49xr41mP3COKU=
-github.com/xmidt-org/httpaux v0.4.0/go.mod h1:UypqZwuZV1nn8D6+K1JDb+im9IZrLNg/2oO/Bgiybxc=
+github.com/xmidt-org/httpaux v0.4.2 h1:O6KTPy9Dtx6m5Ezb0nCQeAZWvBDgZvx82P16FSNauIE=
+github.com/xmidt-org/httpaux v0.4.2/go.mod h1:tZJ+SBoGNCxDOLopuSqrxaCkIVAQ+aPjNRf2XfMVwJA=
 github.com/xmidt-org/wrp-go/v3 v3.2.3 h1:Qmcsnz8QQZ2ZYVLvhyuTH11ixySes1Lm30XNdGDTpn8=
 github.com/xmidt-org/wrp-go/v3 v3.2.3/go.mod h1:ZXUMN7ZTOv/F+9/WypWexNxIt33WVLQvb2hidwIHvqw=
 go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=
