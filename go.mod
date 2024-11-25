@@ -6,7 +6,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/xmidt-org/bascule v0.11.4
 	github.com/xmidt-org/httpaux v0.4.0
 	github.com/xmidt-org/wrp-go/v3 v3.2.3
