@@ -20,8 +20,9 @@ on:
 
 jobs:
   ci:
-    uses: xmidt-org/shared-go/.github/workflows/ci.yml@9e191cedb6f62d364dc8706c07107c8ef612c346 # v4.2.2
+    uses: xmidt-org/shared-go/.github/workflows/ci.yml@766cd1914571123cc26ab6e0f1782c784dc4f11f # v4.4.28
     with:
       copyright-skip: true
       release-type:   library
+      yaml-lint-skip: false
     secrets: inherit
