@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/viper"
 
 	"github.com/spf13/cobra"
@@ -105,16 +107,26 @@ func validate(events []interpreter.Event) {
 }
 
 func printValidationTable(info []eventErrs) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeader([]string{"Cycle", "Event ID", "Boot-time", "Destination", "Event Errors", "Cycle Errors"})
+	table := tablewriter.NewTable(os.Stdout, tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
+				BetweenRows: tw.On,
+			},
+		},
+	})))
+	table.Configure(func(config *tablewriter.Config) {
+		config.Header.Alignment.Global = tw.AlignLeft
+		config.Row.Alignment.Global = tw.AlignLeft
+		config.Row.Formatting = tw.CellFormatting{
+			MergeMode: tw.MergeVertical,
+		}
+	})
+	table.Header([]string{"Cycle", "Event ID", "Boot-time", "Destination", "Event Errors", "Cycle Errors"})
 	data := make([][]string, 0, len(info))
 	for _, eventErr := range info {
 		data = append(data, getValidationRowInfo(eventErr))
 	}
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 2, 5})
-	table.SetRowLine(true)
-	table.AppendBulk(data)
+	table.Bulk(data)
 	table.Render()
 }
 
