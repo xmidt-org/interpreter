@@ -1,19 +1,5 @@
-/**
- * Copyright 2021 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 
 package main
 
@@ -23,6 +9,8 @@ import (
 	"time"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/viper"
 
 	"github.com/spf13/cobra"
@@ -105,16 +93,26 @@ func validate(events []interpreter.Event) {
 }
 
 func printValidationTable(info []eventErrs) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeader([]string{"Cycle", "Event ID", "Boot-time", "Destination", "Event Errors", "Cycle Errors"})
+	table := tablewriter.NewTable(os.Stdout, tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
+				BetweenRows: tw.On,
+			},
+		},
+	})))
+	table.Configure(func(config *tablewriter.Config) {
+		config.Header.Alignment.Global = tw.AlignLeft
+		config.Row.Alignment.Global = tw.AlignLeft
+		config.Row.Formatting = tw.CellFormatting{
+			MergeMode: tw.MergeVertical,
+		}
+	})
+	table.Header([]string{"Cycle", "Event ID", "Boot-time", "Destination", "Event Errors", "Cycle Errors"})
 	data := make([][]string, 0, len(info))
 	for _, eventErr := range info {
 		data = append(data, getValidationRowInfo(eventErr))
 	}
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 2, 5})
-	table.SetRowLine(true)
-	table.AppendBulk(data)
+	table.Bulk(data)
 	table.Render()
 }
 
