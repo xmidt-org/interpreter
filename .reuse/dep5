@@ -1,0 +1,20 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: interpreter
+Upstream-Contact: John Bass <johnbass1017@yahoo.com>
+Source: https://github.com/xmidt-org/interpreter
+
+Files: go.* NOTICE *.md .whitesource .gitignore
+Copyright: SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
+License: Apache-2.0
+
+Files: tools/eventsGenerator/go.mod
+Copyright: SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
+License: Apache-2.0
+
+Files: tools/eventsGenerator/go.sum
+Copyright: SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
+License: Apache-2.0
+
+Files: cmd/events.json
+Copyright: SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
+License: Apache-2.0
